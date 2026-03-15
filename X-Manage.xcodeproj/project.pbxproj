@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		33F508592EE4717900566070 /* SwiftMail in Frameworks */ = {isa = PBXBuildFile; productRef = 33F508582EE4717900566070 /* SwiftMail */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		33F507A02EE3D49400566070 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				33F508592EE4717900566070 /* SwiftMail in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 				33F507912EE3D49300566070 /* X-Manage */,
 				33F507A22EE3D49400566070 /* X-ManageTests */,
 				33F507AC2EE3D49400566070 /* X-ManageUITests */,
+				33F508572EE4717900566070 /* Frameworks */,
 				33F507902EE3D49300566070 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,6 +96,13 @@
 				33F507A92EE3D49400566070 /* X-ManageUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		33F508572EE4717900566070 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +125,7 @@
 			);
 			name = "X-Manage";
 			packageProductDependencies = (
+				33F508582EE4717900566070 /* SwiftMail */,
 			);
 			productName = "X-Manage";
 			productReference = 33F5078F2EE3D49300566070 /* X-Manage.app */;
@@ -187,14 +201,17 @@
 				};
 			};
 			buildConfigurationList = 33F5078A2EE3D49300566070 /* Build configuration list for PBXProject "X-Manage" */;
-			developmentRegion = en;
+			developmentRegion = "zh-HK";
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				"zh-HK",
 			);
 			mainGroup = 33F507862EE3D49300566070;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				33F508562EE46EF300566070 /* XCRemoteSwiftPackageReference "SwiftMail" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 33F507902EE3D49300566070 /* Products */;
 			projectDirPath = "";
@@ -394,7 +411,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "X-Manage/X_Manage.entitlements";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -402,13 +421,14 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "X-Manage/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.xyoushe.X-Manage";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -422,7 +442,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "X-Manage/X_Manage.entitlements";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -430,13 +452,14 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "X-Manage/Info.plist";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.xyoushe.X-Manage";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -553,6 +576,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		33F508562EE46EF300566070 /* XCRemoteSwiftPackageReference "SwiftMail" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Cocoanetics/SwiftMail.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		33F508582EE4717900566070 /* SwiftMail */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 33F508562EE46EF300566070 /* XCRemoteSwiftPackageReference "SwiftMail" */;
+			productName = SwiftMail;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 33F507872EE3D49300566070 /* Project object */;
 }

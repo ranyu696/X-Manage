@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>top-level-items</key>
+	<array>
+		<dict>
+			<key>destination</key>
+			<dict>
+				<key>rebasable-url</key>
+				<dict>
+					<key>base</key>
+					<string>workspace</string>
+					<key>payload</key>
+					<dict>
+						<key>relative-path</key>
+						<string>X-Manage/Info.plist</string>
+					</dict>
+				</dict>
+				<key>type</key>
+				<string>DVTDocumentLocation</string>
+			</dict>
+			<key>type</key>
+			<string>bookmark</string>
+		</dict>
+		<dict>
+			<key>destination</key>
+			<dict>
+				<key>location-parameters</key>
+				<dict>
+					<key>Timestamp</key>
+					<string>786777352.217139</string>
+					<key>XcodeLocation</key>
+					<string>{"Selection":{"Editor":"Xcode3TargetEditor","Target":"X-Manage","Xcode3BuildPhasesEditorLocations":[{"5adf7bc2a437af332097564cd4d07aedbee0e8dfc13d78035507c6d608a231b2":[["5adf7bc2a437af332097564cd4d07aedf86094cc4d6d635d660dbbc2c110bed9"]]}],"Xcode3TargetEditorLocations":[{"Selected Build Files":[["5adf7bc2a437af332097564cd4d07aedf86094cc4d6d635d660dbbc2c110bed9"]]}]}}</string>
+				</dict>
+				<key>rebasable-url</key>
+				<dict>
+					<key>base</key>
+					<string>workspace</string>
+					<key>payload</key>
+					<dict>
+						<key>relative-path</key>
+						<string>X-Manage.xcodeproj</string>
+					</dict>
+				</dict>
+				<key>type</key>
+				<string>Xcode3ProjectDocumentLocation</string>
+			</dict>
+			<key>title</key>
+			<string>Warning: The Copy Bundle Resources build phase contains this target's Info.plist file '/Users/xiaoxin/project/X-Manage/X-Manage/Info.plist'.</string>
+			<key>type</key>
+			<string>bookmark</string>
+		</dict>
+	</array>
+</dict>
+</plist>

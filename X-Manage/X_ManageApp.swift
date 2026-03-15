@@ -6,27 +6,34 @@
 //
 
 import SwiftUI
-import SwiftData
 
 @main
 struct X_ManageApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @StateObject private var authManager = AuthManager.shared
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environmentObject(authManager)
         }
-        .modelContainer(sharedModelContainer)
+        .windowStyle(.automatic)
+        .windowResizability(.contentSize)
+        .defaultSize(width: 1200, height: 800)
+    }
+}
+
+// MARK: - 根视图
+struct RootView: View {
+    @EnvironmentObject private var authManager: AuthManager
+
+    var body: some View {
+        Group {
+            if authManager.isAuthenticated {
+                MainView()
+            } else {
+                LoginView()
+            }
+        }
+        .frame(minWidth: 1000, minHeight: 600)
     }
 }
