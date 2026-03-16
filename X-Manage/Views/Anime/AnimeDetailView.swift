@@ -173,23 +173,65 @@ struct AnimeDetailView: View {
     // MARK: - 基本信息
     private func basicInfoSection(_ anime: AnimeDetail) -> some View {
         GroupBox("基本信息") {
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 16) {
-                infoItem("标题", anime.title)
-                infoItem("原名", anime.titleOriginal ?? "-")
-                infoItem("制作公司", anime.studio ?? "-")
-                infoItem("分类ID", String(anime.categoryId))
-                infoItem("区域", anime.region ?? "-")
-                infoItem("画质", anime.quality ?? "-")
-                infoItem("季度", anime.season != nil ? "第\(anime.season!)季" : "-")
-                infoItem("总集数", anime.totalEpisodes != nil ? "\(anime.totalEpisodes!)集" : "-")
-                infoItem("当前集数", anime.currentEpisode != nil ? "第\(anime.currentEpisode!)集" : "-")
-                infoItem("播出日期", anime.airDate ?? "-")
-                infoItem("完结日期", anime.endDate ?? "-")
+            VStack(alignment: .leading, spacing: 16) {
+                LazyVGrid(columns: [
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible()),
+                    GridItem(.flexible())
+                ], spacing: 16) {
+                    infoItem("标题", anime.title)
+                    infoItem("原名", anime.titleOriginal ?? "-")
+                    infoItem("制作公司", anime.studio ?? "-")
+                    infoItem("分类", anime.category?.name ?? String(anime.categoryId))
+                    infoItem("区域", anime.region ?? "-")
+                    infoItem("画质", anime.quality ?? "-")
+                    infoItem("季度", anime.season != nil ? "第\(anime.season!)季" : "-")
+                    infoItem("总集数", anime.totalEpisodes != nil ? "\(anime.totalEpisodes!)集" : "-")
+                    infoItem("当前集数", anime.currentEpisode != nil ? "第\(anime.currentEpisode!)集" : "-")
+                    infoItem("播出日期", anime.airDate ?? "-")
+                    infoItem("完结日期", anime.endDate ?? "-")
+                }
+
+                // 番号
+                if let codes = anime.codes, !codes.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("番号")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            ForEach(codes, id: \.self) { code in
+                                Text(code)
+                                    .font(.caption.monospaced())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(.blue.opacity(0.1))
+                                    .foregroundStyle(.blue)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                            }
+                        }
+                    }
+                }
+
+                // 标签
+                if let tags = anime.tags, !tags.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("标签")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            ForEach(tags) { tag in
+                                Text(tag.name)
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(.secondary.opacity(0.15))
+                                    .foregroundStyle(.primary)
+                                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                            }
+                        }
+                    }
+                }
             }
             .padding()
         }
@@ -210,12 +252,20 @@ struct AnimeDetailView: View {
     private func imagesSection(_ anime: AnimeDetail) -> some View {
         GroupBox("图片") {
             HStack(spacing: 24) {
-                // 封面
+                // 封面（cover 为空时使用 fanart 兜底）
+                let effectiveCover = anime.cover.isEmpty ? (anime.fanart ?? "") : anime.cover
                 VStack(spacing: 6) {
-                    Text("封面")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if anime.cover.isEmpty {
+                    HStack(spacing: 4) {
+                        Text("封面")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if anime.cover.isEmpty && !(anime.fanart ?? "").isEmpty {
+                            Text("横图替代")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    if effectiveCover.isEmpty {
                         Rectangle()
                             .fill(.quaternary)
                             .frame(width: 150, height: 210)
@@ -226,7 +276,7 @@ struct AnimeDetailView: View {
                                     .foregroundStyle(.secondary)
                             }
                     } else {
-                        AsyncImage(url: URL(string: anime.cover)) { image in
+                        AsyncImage(url: URL(string: effectiveCover)) { image in
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
@@ -365,9 +415,10 @@ struct AnimeDetailView: View {
                             ForEach(viewModel.episodes) { episode in
                                 VStack(spacing: 0) {
                                     HStack {
-                                        // 封面缩略图
-                                        if let cover = episode.cover, !cover.isEmpty {
-                                            AsyncImage(url: URL(string: cover)) { image in
+                                        // 封面缩略图（cover 为空时回退 fanart）
+                                        let epCover = (episode.cover?.isEmpty == false) ? episode.cover : episode.fanart
+                                        if let coverURL = epCover.flatMap({ URL(string: $0) }) {
+                                            AsyncImage(url: coverURL) { image in
                                                 image
                                                     .resizable()
                                                     .aspectRatio(contentMode: .fill)
