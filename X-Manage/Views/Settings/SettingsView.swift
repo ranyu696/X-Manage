@@ -8,6 +8,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @StateObject private var authManager = AuthManager.shared
+    @StateObject private var cdnService = CDNService.shared
     @State private var baseURL = ""
     @State private var geminiApiKey = ""
     @State private var showingLogoutAlert = false
@@ -105,6 +106,34 @@ struct SettingsView: View {
                             }
                             .buttonStyle(.bordered)
                         }
+                    }
+                    .padding()
+                }
+
+                // CDN 代理设置
+                GroupBox("CDN 代理设置") {
+                    VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("CDN 代理地址")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            TextField("http://cdn.example.com", text: $cdnService.baseURL)
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Admin Token")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            SecureField("管理员 Token", text: $cdnService.adminToken)
+                                .textFieldStyle(.roundedBorder)
+                        }
+
+                        Button("保存") {
+                            cdnService.saveConfig()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(cdnService.baseURL.isEmpty)
                     }
                     .padding()
                 }

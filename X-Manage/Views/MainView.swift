@@ -49,6 +49,7 @@ enum NavigationItem: String, Hashable, Identifiable {
     case appDevices = "设备列表"
     case appUpdateLogs = "更新日志"
     case systemConfig = "系统配置"
+    case cdnManagement = "CDN管理"
     case settings = "系统设置"
 
     var id: String { rawValue }
@@ -81,6 +82,7 @@ enum NavigationItem: String, Hashable, Identifiable {
         case .appDevices: return "iphone.gen3"
         case .appUpdateLogs: return "doc.text.magnifyingglass"
         case .systemConfig: return "server.rack"
+        case .cdnManagement: return "cloud.fill"
         case .settings: return "gear"
         }
     }
@@ -235,6 +237,9 @@ struct MainView: View {
                     NavigationLink(value: NavigationItem.systemConfig) {
                         Label("系统配置", systemImage: "server.rack")
                     }
+                    NavigationLink(value: NavigationItem.cdnManagement) {
+                        Label("CDN管理", systemImage: "cloud.fill")
+                    }
                     NavigationLink(value: NavigationItem.settings) {
                         Label("系统设置", systemImage: "gear")
                     }
@@ -324,6 +329,8 @@ struct MainView: View {
             UpdateLogListView()
         case .systemConfig:
             SystemConfigView()
+        case .cdnManagement:
+            CDNManagementView()
         case .settings:
             SettingsView()
         }
