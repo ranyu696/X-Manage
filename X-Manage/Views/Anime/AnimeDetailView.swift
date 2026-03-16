@@ -210,27 +210,41 @@ struct AnimeDetailView: View {
     private func imagesSection(_ anime: AnimeDetail) -> some View {
         GroupBox("图片") {
             HStack(spacing: 24) {
-                VStack {
+                // 封面
+                VStack(spacing: 6) {
                     Text("封面")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    AsyncImage(url: URL(string: anime.cover)) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                    } placeholder: {
+                    if anime.cover.isEmpty {
                         Rectangle()
                             .fill(.quaternary)
+                            .frame(width: 150, height: 210)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay {
+                                Text("无封面")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                    } else {
+                        AsyncImage(url: URL(string: anime.cover)) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        } placeholder: {
+                            Rectangle()
+                                .fill(.quaternary)
+                        }
+                        .frame(width: 150, height: 210)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
-                    .frame(width: 150, height: 210)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
 
-                if let fanart = anime.fanart, !fanart.isEmpty {
-                    VStack {
-                        Text("背景图")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                // 横图 (fanart)
+                VStack(spacing: 6) {
+                    Text("横图")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let fanart = anime.fanart, !fanart.isEmpty {
                         AsyncImage(url: URL(string: fanart)) { image in
                             image
                                 .resizable()
@@ -241,10 +255,70 @@ struct AnimeDetailView: View {
                         }
                         .frame(height: 210)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else {
+                        Rectangle()
+                            .fill(.quaternary)
+                            .frame(width: 280, height: 157)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay {
+                                Text("无横图")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                    }
+                }
+
+                // 预览视频 (来自第一集)
+                let ep1 = viewModel.episodes.first(where: { $0.episodeNo == 1 })
+                if let previewVideo = ep1?.previewVideo, !previewVideo.isEmpty {
+                    VStack(spacing: 6) {
+                        Text("预览视频")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ZStack {
+                            AsyncImage(url: URL(string: ep1?.cover ?? "")) { image in
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: {
+                                Rectangle().fill(.quaternary)
+                            }
+                            .frame(width: 120, height: 68)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                            Image(systemName: "play.circle.fill")
+                                .font(.title)
+                                .foregroundStyle(.white.opacity(0.9))
+                                .shadow(radius: 4)
+                        }
+                        Text("已设置")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
                     }
                 }
 
                 Spacer()
+
+                // 从第一集同步封面/横图
+                if anime.cover.isEmpty || (anime.fanart == nil || anime.fanart!.isEmpty) {
+                    VStack(spacing: 8) {
+                        Text("快捷操作")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button {
+                            Task { await viewModel.syncCoverFromEpisode1() }
+                        } label: {
+                            Label("从第一集截图同步", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        .buttonStyle(.bordered)
+                        .help("自动选取第一集视频截图作为封面和横图")
+
+                        if let err = viewModel.errorMessage {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .lineLimit(2)
+                        }
+                    }
+                }
             }
             .padding()
         }
@@ -291,6 +365,7 @@ struct AnimeDetailView: View {
                             ForEach(viewModel.episodes) { episode in
                                 VStack(spacing: 0) {
                                     HStack {
+                                        // 封面缩略图
                                         if let cover = episode.cover, !cover.isEmpty {
                                             AsyncImage(url: URL(string: cover)) { image in
                                                 image
@@ -302,6 +377,42 @@ struct AnimeDetailView: View {
                                             }
                                             .frame(width: 80, height: 45)
                                             .clipShape(RoundedRectangle(cornerRadius: 4))
+                                        } else {
+                                            Rectangle()
+                                                .fill(.quaternary)
+                                                .frame(width: 80, height: 45)
+                                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                                .overlay {
+                                                    Image(systemName: "photo")
+                                                        .foregroundStyle(.tertiary)
+                                                        .font(.caption)
+                                                }
+                                        }
+
+                                        // 横图缩略图
+                                        if let fanart = episode.fanart, !fanart.isEmpty {
+                                            AsyncImage(url: URL(string: fanart)) { image in
+                                                image
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fill)
+                                            } placeholder: {
+                                                Rectangle()
+                                                    .fill(.quaternary)
+                                            }
+                                            .frame(width: 80, height: 45)
+                                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                                            .help("横图")
+                                        } else {
+                                            Rectangle()
+                                                .fill(.quaternary)
+                                                .frame(width: 80, height: 45)
+                                                .clipShape(RoundedRectangle(cornerRadius: 4))
+                                                .overlay {
+                                                    Image(systemName: "photo.on.rectangle")
+                                                        .foregroundStyle(.tertiary)
+                                                        .font(.caption)
+                                                }
+                                                .help("无横图")
                                         }
 
                                         VStack(alignment: .leading, spacing: 4) {
@@ -315,6 +426,14 @@ struct AnimeDetailView: View {
                                                     .lineLimit(1)
 
                                                 EpisodeStatusBadge(isActive: episode.isActive, status: episode.status)
+
+                                                // 预览视频指示
+                                                if let pv = episode.previewVideo, !pv.isEmpty {
+                                                    Image(systemName: "play.rectangle.fill")
+                                                        .font(.caption)
+                                                        .foregroundStyle(.blue)
+                                                        .help("已有预览视频")
+                                                }
                                             }
 
                                             HStack(spacing: 12) {
@@ -540,6 +659,41 @@ class AnimeDetailViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    // 从第一集截图中同步封面和横图
+    func syncCoverFromEpisode1() async {
+        guard let ep1 = episodes.first(where: { $0.episodeNo == 1 }) else { return }
+        do {
+            let detail = try await service.getEpisodeDetail(episodeId: ep1.id)
+            guard let screenshots = detail.screenshots, !screenshots.isEmpty else { return }
+
+            // 提取存储路径 (去掉 CDN 域名前缀)
+            func storageKey(from url: String) -> String? {
+                guard let u = URL(string: url), !u.path.isEmpty else { return nil }
+                return String(u.path.dropFirst()) // 去掉开头的 "/"
+            }
+
+            let currentCover = anime?.cover ?? ""
+            let currentFanart = anime?.fanart ?? ""
+
+            // 封面: 使用第一张截图
+            if currentCover.isEmpty, let key = storageKey(from: screenshots[0]) {
+                try await service.updateEpisodeCover(episodeId: ep1.id, cover: key)
+            }
+
+            // 横图: 使用中间截图 (或第二张)
+            if currentFanart.isEmpty {
+                let fanartIndex = screenshots.count > 4 ? screenshots.count / 2 : min(1, screenshots.count - 1)
+                if let key = storageKey(from: screenshots[fanartIndex]) {
+                    try await service.updateEpisodeFanart(episodeId: ep1.id, fanart: key)
+                }
+            }
+
+            await loadAnime()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }
 
 // MARK: - 剧集创建表单
@@ -663,6 +817,13 @@ struct EpisodeDetailSheet: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var showEditSheet = false
+    @State private var isSettingCover = false
+
+    // 从 CDN 完整 URL 提取存储路径 key
+    private func storageKey(from fullURL: String) -> String? {
+        guard let u = URL(string: fullURL), !u.path.isEmpty else { return nil }
+        return String(u.path.dropFirst()) // 去掉开头的 "/"
+    }
 
     init(episode: Episode, animeSlug: String, onUpdate: @escaping () -> Void) {
         self.episode = episode
@@ -787,6 +948,46 @@ struct EpisodeDetailSheet: View {
                                                 }
                                                 .frame(width: 192, height: 108)
                                                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                                                .overlay(alignment: .bottom) {
+                                                    if isSettingCover {
+                                                        ProgressView()
+                                                            .padding(4)
+                                                    }
+                                                }
+                                                .contextMenu {
+                                                    Button {
+                                                        guard let key = storageKey(from: url) else { return }
+                                                        isSettingCover = true
+                                                        Task {
+                                                            do {
+                                                                try await AnimeService.shared.updateEpisodeCover(episodeId: episode.id, cover: key)
+                                                                onUpdate()
+                                                            } catch {
+                                                                errorMessage = error.localizedDescription
+                                                            }
+                                                            isSettingCover = false
+                                                        }
+                                                    } label: {
+                                                        Label("设为封面", systemImage: "photo.badge.checkmark")
+                                                    }
+
+                                                    Button {
+                                                        guard let key = storageKey(from: url) else { return }
+                                                        isSettingCover = true
+                                                        Task {
+                                                            do {
+                                                                try await AnimeService.shared.updateEpisodeFanart(episodeId: episode.id, fanart: key)
+                                                                onUpdate()
+                                                            } catch {
+                                                                errorMessage = error.localizedDescription
+                                                            }
+                                                            isSettingCover = false
+                                                        }
+                                                    } label: {
+                                                        Label("设为横图", systemImage: "photo.on.rectangle.angled")
+                                                    }
+                                                }
+                                                .help("右键可设为封面或横图")
                                             }
                                         }
                                         .padding()
@@ -1307,7 +1508,19 @@ struct EpisodeEditSheet: View {
 
         Task {
             do {
-                let uploadResult = try await UploadService.shared.getEpisodeCoverUploadUrl(episodeId: episode.id)
+                let filename = url.lastPathComponent
+                let ext = url.pathExtension.lowercased()
+                let contentType = ext == "png" ? "image/png" : (ext == "webp" ? "image/webp" : "image/jpeg")
+                let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+
+                let uploadResult = try await UploadService.shared.getEpisodeCoverUploadUrl(
+                    animeId: episode.animeId,
+                    animeSlug: animeSlug,
+                    episodeNo: episode.episodeNo ?? 1,
+                    filename: filename,
+                    contentType: contentType,
+                    fileSize: fileSize
+                )
 
                 guard let imageData = UploadService.shared.imageData(from: url) else {
                     throw UploadError.fileReadError
@@ -1316,10 +1529,10 @@ struct EpisodeEditSheet: View {
                 try await UploadService.shared.uploadToPresignedUrl(
                     uploadResult.uploadUrl,
                     data: imageData,
-                    contentType: "image/jpeg"
+                    contentType: contentType
                 )
 
-                try await AnimeService.shared.updateEpisodeCover(episodeId: episode.id, cover: uploadResult.storagePath)
+                try await AnimeService.shared.updateEpisodeCover(episodeId: episode.id, cover: uploadResult.storageKey)
 
                 onUpdate()
             } catch {
@@ -1336,7 +1549,19 @@ struct EpisodeEditSheet: View {
 
         Task {
             do {
-                let uploadResult = try await UploadService.shared.getEpisodeFanartUploadUrl(episodeId: episode.id)
+                let filename = url.lastPathComponent
+                let ext = url.pathExtension.lowercased()
+                let contentType = ext == "png" ? "image/png" : (ext == "webp" ? "image/webp" : "image/jpeg")
+                let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+
+                let uploadResult = try await UploadService.shared.getEpisodeFanartUploadUrl(
+                    animeId: episode.animeId,
+                    animeSlug: animeSlug,
+                    episodeNo: episode.episodeNo ?? 1,
+                    filename: filename,
+                    contentType: contentType,
+                    fileSize: fileSize
+                )
 
                 guard let imageData = UploadService.shared.imageData(from: url) else {
                     throw UploadError.fileReadError
@@ -1345,10 +1570,10 @@ struct EpisodeEditSheet: View {
                 try await UploadService.shared.uploadToPresignedUrl(
                     uploadResult.uploadUrl,
                     data: imageData,
-                    contentType: "image/jpeg"
+                    contentType: contentType
                 )
 
-                try await AnimeService.shared.updateEpisodeFanart(episodeId: episode.id, fanart: uploadResult.storagePath)
+                try await AnimeService.shared.updateEpisodeFanart(episodeId: episode.id, fanart: uploadResult.storageKey)
 
                 onUpdate()
             } catch {
@@ -1578,11 +1803,13 @@ struct EpisodeVideoUploadSheet: View {
                                     .font(.title2)
                                     .foregroundStyle(.green)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("上传成功，转码任务已创建")
+                                    Text("上传成功，正在等待转码")
                                         .fontWeight(.medium)
-                                    Text("任务 ID: \(result.taskId)")
-                                        .font(.caption.monospaced())
-                                        .foregroundStyle(.secondary)
+                                    if let key = result.storageKey ?? result.sourcePath {
+                                        Text(key)
+                                            .font(.caption.monospaced())
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                                 Spacer()
                             }
