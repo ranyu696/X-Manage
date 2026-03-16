@@ -26,7 +26,10 @@ struct AnimeTranscodeView: View {
             Task { await viewModel.loadTasks() }
         }
         .sheet(item: $selectedTask) { task in
-            TranscodeTaskDetailView(task: task)
+            TranscodeTaskDetailView(task: task, viewModel: viewModel) {
+                selectedTask = nil
+                Task { await viewModel.loadTasks() }
+            }
         }
     }
 
@@ -43,10 +46,10 @@ struct AnimeTranscodeView: View {
     private var statusPicker: some View {
         Picker("状态", selection: $selectedStatus) {
             Text("全部状态").tag(nil as String?)
-            Text("等待中").tag("PENDING" as String?)
-            Text("转码中").tag("PROCESSING" as String?)
-            Text("已完成").tag("COMPLETED" as String?)
-            Text("失败").tag("FAILED" as String?)
+            Text("等待中").tag("pending" as String?)
+            Text("转码中").tag("processing" as String?)
+            Text("已完成").tag("completed" as String?)
+            Text("失败").tag("failed" as String?)
         }
         .pickerStyle(.menu)
         .frame(width: 120)
@@ -147,6 +150,17 @@ struct TranscodeTaskTableView: View {
             }
             .width(100)
 
+            TableColumn("重试") { (task: TranscodeTask) in
+                if let retryCount = task.retryCount {
+                    Text("\(retryCount)次")
+                        .font(.caption)
+                        .foregroundStyle(retryCount > 0 ? .orange : .secondary)
+                } else {
+                    Text("-").foregroundStyle(.secondary)
+                }
+            }
+            .width(55)
+
             TableColumn("耗时") { (task: TranscodeTask) in
                 if let duration = task.duration {
                     Text(formatDuration(duration))
@@ -211,20 +225,22 @@ struct TranscodeStatusBadge: View {
 
     private var displayName: String {
         switch status {
-        case "PENDING": return "等待中"
-        case "PROCESSING": return "转码中"
-        case "COMPLETED": return "已完成"
-        case "FAILED": return "失败"
+        case "pending": return "等待中"
+        case "processing": return "转码中"
+        case "completed": return "已完成"
+        case "failed": return "失败"
+        case "cancelled": return "已取消"
         default: return status
         }
     }
 
     private var textColor: Color {
         switch status {
-        case "PENDING": return .orange
-        case "PROCESSING": return .blue
-        case "COMPLETED": return .green
-        case "FAILED": return .red
+        case "pending": return .orange
+        case "processing": return .blue
+        case "completed": return .green
+        case "failed": return .red
+        case "cancelled": return .gray
         default: return .gray
         }
     }
@@ -237,11 +253,78 @@ struct TranscodeStatusBadge: View {
 // MARK: - 任务详情视图
 struct TranscodeTaskDetailView: View {
     let task: TranscodeTask
+    @ObservedObject var viewModel: AnimeTranscodeViewModel
+    let onDismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("转码任务详情")
-                .font(.headline)
+            // 标题栏
+            HStack {
+                Text("转码任务详情")
+                    .font(.headline)
+                Spacer()
+                TranscodeStatusBadge(status: task.status)
+            }
+
+            // 操作按钮（失败任务可重试，等待中/转码中可取消）
+            if task.status == "failed" || task.status == "pending" || task.status == "processing" {
+                HStack(spacing: 12) {
+                    if task.status == "failed" {
+                        Button {
+                            Task {
+                                await viewModel.retryTask(taskId: task.taskId)
+                                onDismiss()
+                            }
+                        } label: {
+                            Label("重新转码", systemImage: "arrow.clockwise")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(viewModel.isActioning)
+                    }
+
+                    if task.status == "pending" || task.status == "processing" {
+                        Button(role: .destructive) {
+                            Task {
+                                await viewModel.cancelTask(taskId: task.taskId)
+                                onDismiss()
+                            }
+                        } label: {
+                            Label("取消任务", systemImage: "xmark.circle")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(viewModel.isActioning)
+                    }
+
+                    if viewModel.isActioning {
+                        ProgressView().scaleEffect(0.8)
+                    }
+
+                    Spacer()
+                }
+            }
+
+            // 错误信息
+            if let errorMsg = task.error, !errorMsg.isEmpty {
+                GroupBox {
+                    ScrollView {
+                        Text(errorMsg)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxHeight: 120)
+                } label: {
+                    Label("错误信息", systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                }
+            }
+
+            if let actionError = viewModel.actionError {
+                Text(actionError)
+                    .foregroundStyle(.red)
+                    .font(.caption)
+            }
 
             GroupBox("基本信息") {
                 LabeledContent("任务ID", value: "\(task.id)")
@@ -253,6 +336,9 @@ struct TranscodeTaskDetailView: View {
                 }
                 LabeledContent("状态", value: task.status)
                 LabeledContent("进度", value: "\(task.progress)%")
+                if let retryCount = task.retryCount {
+                    LabeledContent("重试次数", value: "\(retryCount)次")
+                }
             }
 
             GroupBox("文件信息") {
@@ -282,9 +368,12 @@ struct TranscodeTaskDetailView: View {
             }
 
             Spacer()
+
+            Button("关闭") { onDismiss() }
+                .frame(maxWidth: .infinity)
         }
         .padding()
-        .frame(width: 450, height: 500)
+        .frame(width: 500, height: 580)
     }
 
     private func formatFileSize(_ bytes: Int) -> String {
@@ -325,6 +414,8 @@ struct TranscodeTask: Identifiable, Hashable, Codable {
     let sourceSize: Int?
     let outputSize: Int?
     let duration: Int?
+    let error: String?
+    let retryCount: Int?
     let createdAt: String
     let updatedAt: String
     let startedAt: String?
@@ -342,6 +433,8 @@ struct TranscodeTask: Identifiable, Hashable, Codable {
         case sourceSize = "source_size"
         case outputSize = "output_size"
         case duration
+        case error
+        case retryCount = "retry_count"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case startedAt = "started_at"
@@ -359,7 +452,9 @@ struct TranscodeTaskListResponse: Codable {
 class AnimeTranscodeViewModel: ObservableObject {
     @Published var tasks: [TranscodeTask] = []
     @Published var isLoading = false
+    @Published var isActioning = false
     @Published var errorMessage: String?
+    @Published var actionError: String?
     @Published var currentPage = 1
     @Published var totalPages = 1
 
@@ -371,7 +466,7 @@ class AnimeTranscodeViewModel: ObservableObject {
 
         do {
             let response: TranscodeTaskListResponse = try await APIClient.shared.request(
-                endpoint: APIEndpoints.Anime.transcode,
+                endpoint: APIEndpoints.Transcode.tasks,
                 method: .get,
                 queryItems: buildQueryItems(page: page)
             )
@@ -387,6 +482,34 @@ class AnimeTranscodeViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    func retryTask(taskId: String) async {
+        isActioning = true
+        actionError = nil
+        do {
+            try await APIClient.shared.requestVoid(
+                endpoint: APIEndpoints.Transcode.retry(taskId),
+                method: .post
+            )
+        } catch {
+            actionError = "重试失败: \(error.localizedDescription)"
+        }
+        isActioning = false
+    }
+
+    func cancelTask(taskId: String) async {
+        isActioning = true
+        actionError = nil
+        do {
+            try await APIClient.shared.requestVoid(
+                endpoint: APIEndpoints.Transcode.cancel(taskId),
+                method: .post
+            )
+        } catch {
+            actionError = "取消失败: \(error.localizedDescription)"
+        }
+        isActioning = false
     }
 
     private func buildQueryItems(page: Int) -> [URLQueryItem] {

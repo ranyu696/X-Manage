@@ -58,6 +58,7 @@ struct Anime: Codable, Identifiable {
     let title: String
     let slug: String
     let cover: String
+    let fanart: String?
     let studio: String?
     let status: String
     let isTop: Bool?
@@ -77,7 +78,7 @@ struct Anime: Codable, Identifiable {
     let updatedAt: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, slug, cover, studio, status
+        case id, title, slug, cover, fanart, studio, status
         case isTop = "is_top"
         case isCompleted = "is_completed"
         case episodeCount = "episode_count"

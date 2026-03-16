@@ -149,7 +149,7 @@ struct AnimeListContentView: View {
             .width(60)
 
             TableColumn("封面") { anime in
-                AnimeCoverCell(cover: anime.cover)
+                AnimeCoverCell(cover: anime.cover, fanart: anime.fanart)
             }
             .width(80)
 
@@ -219,9 +219,15 @@ struct AnimeListContentView: View {
 // MARK: - 表格单元格组件
 struct AnimeCoverCell: View {
     let cover: String
+    var fanart: String? = nil
+
+    private var displayURL: URL? {
+        let effective = cover.isEmpty ? (fanart ?? "") : cover
+        return URL(string: effective)
+    }
 
     var body: some View {
-        AsyncImage(url: URL(string: cover)) { image in
+        AsyncImage(url: displayURL) { image in
             image
                 .resizable()
                 .aspectRatio(contentMode: .fill)
@@ -565,17 +571,31 @@ struct AnimePricingFormView: View {
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var price = ""
-    @State private var previewSeconds = 0
-    @State private var memberDiscount = ""
-    @State private var vipDiscount = ""
-    @State private var svipDiscount = ""
-    @State private var memberFree = false
-    @State private var vipFree = false
-    @State private var svipFree = false
+    @State private var name: String
+    @State private var price: String
+    @State private var previewSeconds: Int
+    @State private var memberDiscount: String
+    @State private var vipDiscount: String
+    @State private var svipDiscount: String
+    @State private var memberFree: Bool
+    @State private var vipFree: Bool
+    @State private var svipFree: Bool
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+
+    init(pricing: AnimePricing?, onSave: @escaping () -> Void) {
+        self.pricing = pricing
+        self.onSave = onSave
+        _name = State(initialValue: pricing?.name ?? "")
+        _price = State(initialValue: pricing?.price ?? "")
+        _previewSeconds = State(initialValue: pricing?.previewSeconds ?? 0)
+        _memberDiscount = State(initialValue: pricing?.memberDiscount ?? "")
+        _vipDiscount = State(initialValue: pricing?.vipDiscount ?? "")
+        _svipDiscount = State(initialValue: pricing?.svipDiscount ?? "")
+        _memberFree = State(initialValue: pricing?.memberFree ?? false)
+        _vipFree = State(initialValue: pricing?.vipFree ?? false)
+        _svipFree = State(initialValue: pricing?.svipFree ?? false)
+    }
 
     private let service = AnimeService.shared
     private var isEditing: Bool { pricing != nil }
@@ -708,20 +728,6 @@ struct AnimePricingFormView: View {
             .padding(.vertical, 14)
         }
         .frame(width: 480)
-        .onAppear { populateFields() }
-    }
-
-    private func populateFields() {
-        guard let p = pricing else { return }
-        name = p.name
-        price = p.price
-        previewSeconds = p.previewSeconds
-        memberDiscount = p.memberDiscount
-        vipDiscount = p.vipDiscount
-        svipDiscount = p.svipDiscount
-        memberFree = p.memberFree
-        vipFree = p.vipFree
-        svipFree = p.svipFree
     }
 
     private func submit() async {

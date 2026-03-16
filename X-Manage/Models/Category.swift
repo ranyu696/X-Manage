@@ -65,14 +65,7 @@ struct CreateCategoryRequest: Codable {
 // MARK: - 更新分类请求
 struct UpdateCategoryRequest: Codable {
     var name: String?
-    var slug: String?
     var description: String?
     var picture: String?
-    var parentId: Int?
     var sort: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case name, slug, description, picture, sort
-        case parentId = "parent_id"
-    }
 }

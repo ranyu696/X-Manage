@@ -278,6 +278,7 @@ struct CategoryFormView: View {
     @State private var name = ""
     @State private var slug = ""
     @State private var description = ""
+    @State private var picture = ""
     @State private var parentId: Int? = nil
     @State private var sort = 0
     @State private var isSaving = false
@@ -293,6 +294,7 @@ struct CategoryFormView: View {
             _name = State(initialValue: category.name)
             _slug = State(initialValue: category.slug)
             _description = State(initialValue: category.description)
+            _picture = State(initialValue: category.picture)
             _parentId = State(initialValue: category.parentId)
             _sort = State(initialValue: category.sort)
         case .createChild(let parent):
@@ -320,6 +322,7 @@ struct CategoryFormView: View {
                 Section("基本信息") {
                     TextField("名称 *", text: $name)
                     TextField("Slug *", text: $slug)
+                    TextField("图片 URL *", text: $picture)
                     TextField("排序", value: $sort, format: .number)
                         .frame(width: 100)
                 }
@@ -359,11 +362,11 @@ struct CategoryFormView: View {
                     save()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(name.isEmpty || slug.isEmpty || isSaving)
+                .disabled(name.isEmpty || slug.isEmpty || picture.isEmpty || isSaving)
             }
             .padding()
         }
-        .frame(width: 450, height: 480)
+        .frame(width: 450, height: 520)
     }
 
     private var title: String {
@@ -388,7 +391,7 @@ struct CategoryFormView: View {
                         name: name,
                         slug: slug,
                         description: description,
-                        picture: "",
+                        picture: picture,
                         parentId: parentId,
                         sort: sort
                     )
@@ -399,10 +402,8 @@ struct CategoryFormView: View {
                 case .edit(let existing):
                     let request = UpdateCategoryRequest(
                         name: name,
-                        slug: slug,
                         description: description,
-                        picture: nil,
-                        parentId: parentId,
+                        picture: picture.isEmpty ? nil : picture,
                         sort: sort
                     )
                     let category = try await service.update(id: existing.id, request: request)

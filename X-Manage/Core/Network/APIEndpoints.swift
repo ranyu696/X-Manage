@@ -76,8 +76,8 @@ enum APIEndpoints {
         static let transcode = "\(basePrefix)/transcode/tasks"
         // 剧集相关
         static func episodeDetail(_ episodeId: Int) -> String { "\(basePrefix)/episodes/\(episodeId)" }
-        static func episodeCoverUpload(_ episodeId: Int) -> String { "\(basePrefix)/anime/episodes/\(episodeId)/cover/upload-url" }
-        static func episodeFanartUpload(_ episodeId: Int) -> String { "\(basePrefix)/anime/episodes/\(episodeId)/fanart/upload-url" }
+        static let episodeCoverUpload = "\(basePrefix)/anime/episodes/cover/upload-url"
+        static let episodeFanartUpload = "\(basePrefix)/anime/episodes/fanart/upload-url"
         static let videoUploadInit = "\(basePrefix)/anime/upload/init"
         static func videoUploadComplete(_ uploadId: String) -> String { "\(basePrefix)/anime/upload/\(uploadId)/complete" }
         static let subtitleUploadURL = "\(basePrefix)/anime/episodes/subtitle/upload-url"
@@ -95,6 +95,8 @@ enum APIEndpoints {
     enum Transcode {
         static let tasks = "\(basePrefix)/transcode/tasks"
         static func detail(_ taskId: String) -> String { "\(basePrefix)/transcode/tasks/\(taskId)" }
+        static func retry(_ taskId: String) -> String { "\(basePrefix)/transcode/tasks/\(taskId)/retry" }
+        static func cancel(_ taskId: String) -> String { "\(basePrefix)/transcode/tasks/\(taskId)/cancel" }
         static func stream(_ taskId: String) -> String { "\(basePrefix)/transcode/tasks/\(taskId)/stream" }
     }
 

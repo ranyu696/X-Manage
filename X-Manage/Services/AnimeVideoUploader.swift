@@ -73,8 +73,8 @@ struct CompleteVideoUploadRequest: Codable {
 }
 
 struct CompleteVideoUploadResponse: Codable {
-    let taskId: String
-    let taskStatus: String
+    let taskId: String?
+    let taskStatus: String?
     let storageKey: String?
     let sourcePath: String?
     let fileSize: Int?

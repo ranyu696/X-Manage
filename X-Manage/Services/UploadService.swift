@@ -65,6 +65,38 @@ struct SingleUploadResult: Codable {
     }
 }
 
+// 剧集图片（封面/横图）上传URL响应
+struct EpisodeImageUploadResult: Codable {
+    let uploadUrl: String
+    let storageKey: String
+    let expiresIn: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case uploadUrl = "upload_url"
+        case storageKey = "storage_key"
+        case expiresIn = "expires_in"
+    }
+}
+
+// 剧集图片上传URL请求
+struct EpisodeImageUploadRequest: Codable {
+    let animeId: Int
+    let animeSlug: String
+    let episodeNo: Int
+    let filename: String
+    let contentType: String
+    let fileSize: Int
+
+    enum CodingKeys: String, CodingKey {
+        case animeId = "anime_id"
+        case animeSlug = "anime_slug"
+        case episodeNo = "episode_no"
+        case filename
+        case contentType = "content_type"
+        case fileSize = "file_size"
+    }
+}
+
 struct SingleUploadRequest: Codable {
     let fileName: String
     let contentType: String
@@ -202,18 +234,22 @@ class UploadService {
     // MARK: - 动漫剧集图片上传
 
     /// 获取剧集封面上传URL
-    func getEpisodeCoverUploadUrl(episodeId: Int) async throws -> SingleUploadResult {
-        try await api.request(
-            endpoint: APIEndpoints.Anime.episodeCoverUpload(episodeId),
-            method: .post
+    func getEpisodeCoverUploadUrl(animeId: Int, animeSlug: String, episodeNo: Int, filename: String, contentType: String, fileSize: Int) async throws -> EpisodeImageUploadResult {
+        let request = EpisodeImageUploadRequest(animeId: animeId, animeSlug: animeSlug, episodeNo: episodeNo, filename: filename, contentType: contentType, fileSize: fileSize)
+        return try await api.request(
+            endpoint: APIEndpoints.Anime.episodeCoverUpload,
+            method: .post,
+            body: request
         )
     }
 
     /// 获取剧集横图上传URL
-    func getEpisodeFanartUploadUrl(episodeId: Int) async throws -> SingleUploadResult {
-        try await api.request(
-            endpoint: APIEndpoints.Anime.episodeFanartUpload(episodeId),
-            method: .post
+    func getEpisodeFanartUploadUrl(animeId: Int, animeSlug: String, episodeNo: Int, filename: String, contentType: String, fileSize: Int) async throws -> EpisodeImageUploadResult {
+        let request = EpisodeImageUploadRequest(animeId: animeId, animeSlug: animeSlug, episodeNo: episodeNo, filename: filename, contentType: contentType, fileSize: fileSize)
+        return try await api.request(
+            endpoint: APIEndpoints.Anime.episodeFanartUpload,
+            method: .post,
+            body: request
         )
     }
 

@@ -177,7 +177,7 @@ class AnimeService {
 
     func updateEpisodeCover(episodeId: Int, cover: String) async throws {
         try await api.requestVoid(
-            endpoint: "\(APIEndpoints.Anime.episodeDetail(episodeId))/cover",
+            endpoint: APIEndpoints.Anime.episodeDetail(episodeId),
             method: .put,
             body: ["cover": cover]
         )
@@ -185,7 +185,7 @@ class AnimeService {
 
     func updateEpisodeFanart(episodeId: Int, fanart: String) async throws {
         try await api.requestVoid(
-            endpoint: "\(APIEndpoints.Anime.episodeDetail(episodeId))/fanart",
+            endpoint: APIEndpoints.Anime.episodeDetail(episodeId),
             method: .put,
             body: ["fanart": fanart]
         )
