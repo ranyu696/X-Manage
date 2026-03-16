@@ -197,6 +197,18 @@ class NovelService {
         )
     }
 
+    func createPricing(_ request: CreateNovelPricingRequest) async throws -> NovelPricingResponse {
+        try await api.request(endpoint: APIEndpoints.Novels.pricings, method: .post, body: request)
+    }
+
+    func updatePricing(id: Int, _ request: UpdateNovelPricingRequest) async throws -> NovelPricingResponse {
+        try await api.request(endpoint: APIEndpoints.Novels.pricingDetail(id), method: .put, body: request)
+    }
+
+    func deletePricing(id: Int) async throws {
+        try await api.requestVoid(endpoint: APIEndpoints.Novels.pricingDetail(id), method: .delete)
+    }
+
     // MARK: - 订单
     func getOrders(params: NovelOrderListParams) async throws -> NovelOrderListResponse {
         try await api.request(

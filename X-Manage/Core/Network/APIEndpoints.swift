@@ -24,6 +24,7 @@ enum APIEndpoints {
         static func chapterDetail(_ id: Int) -> String { "\(basePrefix)/comic-chapters/\(id)" }
         static let pages = "\(basePrefix)/comic-pages"
         static let pricings = "\(basePrefix)/comic-pricings"
+        static func pricingDetail(_ id: Int) -> String { "\(basePrefix)/comic-pricings/\(id)" }
         static let orders = "\(basePrefix)/comic-orders"
         static let comments = "\(basePrefix)/comic-comments"
         // 封面上传
@@ -37,6 +38,7 @@ enum APIEndpoints {
         static func detail(_ id: Int) -> String { "\(basePrefix)/games/\(id)" }
         static func versions(_ gameId: Int) -> String { "\(basePrefix)/games/\(gameId)/versions" }
         static let pricings = "\(basePrefix)/games/pricings"
+        static func pricingDetail(_ id: Int) -> String { "\(basePrefix)/games/pricings/\(id)" }
         static let orders = "\(basePrefix)/games/orders"
         static let comments = "\(basePrefix)/comments"
         // 图片上传
@@ -54,6 +56,7 @@ enum APIEndpoints {
         static func detail(_ id: Int) -> String { "\(basePrefix)/novels/\(id)" }
         static let chapters = "\(basePrefix)/novel-chapters"
         static let pricings = "\(basePrefix)/novel-pricings"
+        static func pricingDetail(_ id: Int) -> String { "\(basePrefix)/novel-pricings/\(id)" }
         static let orders = "\(basePrefix)/novel-orders"
         static let comments = "\(basePrefix)/novel-comments"
         // 封面上传
@@ -67,6 +70,7 @@ enum APIEndpoints {
         static func detail(_ id: Int) -> String { "\(basePrefix)/animes/\(id)" }
         static func episodes(_ animeId: Int) -> String { "\(basePrefix)/animes/\(animeId)/episodes" }
         static let pricings = "\(basePrefix)/animes/pricings"
+        static func pricingDetail(_ id: Int) -> String { "\(basePrefix)/animes/pricings/\(id)" }
         static let orders = "\(basePrefix)/anime-orders"
         static let comments = "\(basePrefix)/animes/comments"
         static let transcode = "\(basePrefix)/transcode/tasks"
@@ -76,6 +80,7 @@ enum APIEndpoints {
         static func episodeFanartUpload(_ episodeId: Int) -> String { "\(basePrefix)/anime/episodes/\(episodeId)/fanart/upload-url" }
         static let videoUploadInit = "\(basePrefix)/anime/upload/init"
         static func videoUploadComplete(_ uploadId: String) -> String { "\(basePrefix)/anime/upload/\(uploadId)/complete" }
+        static let subtitleUploadURL = "\(basePrefix)/anime/episodes/subtitle/upload-url"
     }
 
     // MARK: - 漫画上传任务

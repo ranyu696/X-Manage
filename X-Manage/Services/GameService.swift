@@ -195,6 +195,18 @@ class GameService {
         )
     }
 
+    func createPricing(_ request: CreateGamePricingRequest) async throws -> GamePricingResponse {
+        try await api.request(endpoint: APIEndpoints.Games.pricings, method: .post, body: request)
+    }
+
+    func updatePricing(id: Int, _ request: UpdateGamePricingRequest) async throws -> GamePricingResponse {
+        try await api.request(endpoint: APIEndpoints.Games.pricingDetail(id), method: .put, body: request)
+    }
+
+    func deletePricing(id: Int) async throws {
+        try await api.requestVoid(endpoint: APIEndpoints.Games.pricingDetail(id), method: .delete)
+    }
+
     // MARK: - 订单
     func getOrders(params: GameOrderListParams) async throws -> GameOrderListResponse {
         try await api.request(

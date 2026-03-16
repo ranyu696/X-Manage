@@ -64,6 +64,12 @@ struct CompletedPart: Codable {
 
 struct CompleteVideoUploadRequest: Codable {
     let parts: [CompletedPart]
+    let subtitlePath: String?
+
+    enum CodingKeys: String, CodingKey {
+        case parts
+        case subtitlePath = "subtitle_path"
+    }
 }
 
 struct CompleteVideoUploadResponse: Codable {
@@ -117,6 +123,7 @@ actor AnimeVideoUploader {
     private let animeSlug: String
     private let episodeNo: Int
     private let fileUrl: URL
+    private let subtitlePath: String?
     private let onProgress: ((VideoUploadProgress) -> Void)?
 
     private var uploadId: String?
@@ -129,6 +136,7 @@ actor AnimeVideoUploader {
         animeSlug: String,
         episodeNo: Int,
         fileUrl: URL,
+        subtitlePath: String? = nil,
         concurrency: Int = 2,
         maxRetries: Int = 3,
         onProgress: ((VideoUploadProgress) -> Void)? = nil
@@ -137,6 +145,7 @@ actor AnimeVideoUploader {
         self.animeSlug = animeSlug
         self.episodeNo = episodeNo
         self.fileUrl = fileUrl
+        self.subtitlePath = subtitlePath
         self.concurrency = concurrency
         self.maxRetries = maxRetries
         self.onProgress = onProgress
@@ -312,7 +321,7 @@ actor AnimeVideoUploader {
     }
 
     private func completeUpload(uploadId: String, parts: [CompletedPart]) async throws -> CompleteVideoUploadResponse {
-        let request = CompleteVideoUploadRequest(parts: parts)
+        let request = CompleteVideoUploadRequest(parts: parts, subtitlePath: subtitlePath)
 
         return try await APIClient.shared.request(
             endpoint: APIEndpoints.Anime.videoUploadComplete(uploadId),

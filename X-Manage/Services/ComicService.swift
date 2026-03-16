@@ -216,6 +216,18 @@ class ComicService: ComicServiceProtocol {
         )
     }
 
+    func createPricing(_ request: CreateComicPricingRequest) async throws -> ComicPricingResponse {
+        try await api.request(endpoint: APIEndpoints.Comics.pricings, method: .post, body: request)
+    }
+
+    func updatePricing(id: Int, _ request: UpdateComicPricingRequest) async throws -> ComicPricingResponse {
+        try await api.request(endpoint: APIEndpoints.Comics.pricingDetail(id), method: .put, body: request)
+    }
+
+    func deletePricing(id: Int) async throws {
+        try await api.requestVoid(endpoint: APIEndpoints.Comics.pricingDetail(id), method: .delete)
+    }
+
     // MARK: - 订单
     func getOrders(params: ComicOrderListParams) async throws -> ComicOrderListResponse {
         try await api.request(

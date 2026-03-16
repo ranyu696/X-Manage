@@ -405,6 +405,10 @@ struct NovelStatusBadge: View {
 // MARK: - 小说定价列表
 struct NovelPricingListView: View {
     @StateObject private var viewModel = NovelPricingListViewModel()
+    @State private var showFormSheet = false
+    @State private var editingPricing: NovelPricing?
+    @State private var showDeleteAlert = false
+    @State private var pricingToDelete: NovelPricing?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -416,11 +420,34 @@ struct NovelPricingListView: View {
         .task {
             await viewModel.loadPricings()
         }
+        .sheet(isPresented: $showFormSheet) {
+            NovelPricingFormView(pricing: editingPricing) {
+                Task { await viewModel.loadPricings(page: viewModel.currentPage) }
+            }
+        }
+        .alert("确认删除", isPresented: $showDeleteAlert) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                if let p = pricingToDelete {
+                    Task { await viewModel.deletePricing(p) }
+                }
+            }
+        } message: {
+            Text("确定要删除定价方案「\(pricingToDelete?.name ?? "")」吗？")
+        }
     }
 
     private var toolbarView: some View {
         HStack {
             Spacer()
+            Button {
+                editingPricing = nil
+                showFormSheet = true
+            } label: {
+                Label("新建定价", systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
+
             Button {
                 Task { await viewModel.loadPricings() }
             } label: {
@@ -489,6 +516,25 @@ struct NovelPricingListView: View {
                 NovelPricingFreeFlags(pricing: pricing)
             }
             .width(100)
+
+            TableColumn("操作") { pricing in
+                HStack(spacing: 8) {
+                    Button("编辑") {
+                        editingPricing = pricing
+                        showFormSheet = true
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.blue)
+
+                    Button("删除") {
+                        pricingToDelete = pricing
+                        showDeleteAlert = true
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.red)
+                }
+            }
+            .width(100)
         }
         .tableStyle(.inset(alternatesRowBackgrounds: true))
     }
@@ -538,6 +584,195 @@ struct NovelPricingFreeFlags: View {
                     .foregroundStyle(.purple)
                     .clipShape(RoundedRectangle(cornerRadius: 3))
             }
+        }
+    }
+}
+
+// MARK: - 小说定价表单
+struct NovelPricingFormView: View {
+    let pricing: NovelPricing?
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var price = ""
+    @State private var previewCount = 0
+    @State private var memberDiscount = ""
+    @State private var vipDiscount = ""
+    @State private var svipDiscount = ""
+    @State private var memberFree = false
+    @State private var vipFree = false
+    @State private var svipFree = false
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+
+    private let service = NovelService.shared
+    private var isEditing: Bool { pricing != nil }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isEditing ? "编辑定价方案" : "新建定价方案").font(.headline)
+                    if isEditing, let p = pricing {
+                        Text("ID: \(p.id)").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20).padding(.vertical, 16)
+
+            Divider()
+
+            ScrollView {
+                VStack(spacing: 16) {
+                    NovelPricingFormSection(title: "基本信息", systemImage: "tag") {
+                        NovelPricingFieldRow(label: "方案名称") {
+                            TextField("例：普通套餐", text: $name).textFieldStyle(.roundedBorder)
+                        }
+                        NovelPricingFieldRow(label: "售价（元）") {
+                            HStack {
+                                Text("¥").foregroundStyle(.secondary)
+                                TextField("0.00", text: $price).textFieldStyle(.roundedBorder)
+                            }
+                        }
+                        NovelPricingFieldRow(label: "预览章节") {
+                            HStack {
+                                TextField("0", value: $previewCount, format: .number)
+                                    .textFieldStyle(.roundedBorder).frame(width: 80)
+                                Stepper("", value: $previewCount, in: 0...100).labelsHidden()
+                                Text("章").foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    NovelPricingFormSection(title: "会员折扣", systemImage: "percent") {
+                        NovelPricingDiscountRow(label: "普通会员", color: .green,   value: $memberDiscount, isFree: $memberFree)
+                        Divider().padding(.leading, 8)
+                        NovelPricingDiscountRow(label: "VIP 会员",  color: .orange, value: $vipDiscount,    isFree: $vipFree)
+                        Divider().padding(.leading, 8)
+                        NovelPricingDiscountRow(label: "SVIP 会员", color: .purple, value: $svipDiscount,   isFree: $svipFree)
+                    }
+
+                    if let error = errorMessage {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                            Text(error).font(.caption).foregroundStyle(.red)
+                        }
+                        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.red.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                .padding(20)
+            }
+
+            Divider()
+
+            HStack {
+                Button("取消") { dismiss() }.keyboardShortcut(.escape)
+                Spacer()
+                Button { Task { await submit() } } label: {
+                    if isSubmitting {
+                        HStack(spacing: 6) { ProgressView().controlSize(.small); Text("提交中...") }
+                    } else {
+                        Text(isEditing ? "保存更改" : "创建方案")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isSubmitting || name.trimmingCharacters(in: .whitespaces).isEmpty || price.isEmpty)
+                .keyboardShortcut(.return)
+            }
+            .padding(.horizontal, 20).padding(.vertical, 14)
+        }
+        .frame(width: 480)
+        .onAppear { populateFields() }
+    }
+
+    private func populateFields() {
+        guard let p = pricing else { return }
+        name = p.name; price = p.price
+        previewCount = p.previewCount ?? 0
+        memberDiscount = p.memberDiscount ?? ""
+        vipDiscount = p.vipDiscount ?? ""
+        svipDiscount = p.svipDiscount ?? ""
+        memberFree = p.memberFree; vipFree = p.vipFree; svipFree = p.svipFree
+    }
+
+    private func submit() async {
+        isSubmitting = true; errorMessage = nil
+        do {
+            if let p = pricing {
+                let req = UpdateNovelPricingRequest(
+                    name: name.trimmingCharacters(in: .whitespaces), price: price, previewCount: previewCount,
+                    memberDiscount: memberDiscount.isEmpty ? "1.00" : memberDiscount,
+                    vipDiscount: vipDiscount.isEmpty ? "1.00" : vipDiscount,
+                    svipDiscount: svipDiscount.isEmpty ? "1.00" : svipDiscount,
+                    memberFree: memberFree, vipFree: vipFree, svipFree: svipFree
+                )
+                _ = try await service.updatePricing(id: p.id, req)
+            } else {
+                let req = CreateNovelPricingRequest(
+                    name: name.trimmingCharacters(in: .whitespaces), price: price, previewCount: previewCount,
+                    memberDiscount: memberDiscount.isEmpty ? "1.00" : memberDiscount,
+                    vipDiscount: vipDiscount.isEmpty ? "1.00" : vipDiscount,
+                    svipDiscount: svipDiscount.isEmpty ? "1.00" : svipDiscount,
+                    memberFree: memberFree, vipFree: vipFree, svipFree: svipFree
+                )
+                _ = try await service.createPricing(req)
+            }
+            onSave(); dismiss()
+        } catch { errorMessage = error.localizedDescription }
+        isSubmitting = false
+    }
+}
+
+private struct NovelPricingFormSection<Content: View>: View {
+    let title: String; let systemImage: String
+    @ViewBuilder let content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage).font(.caption).foregroundStyle(.secondary)
+                Text(title).font(.caption).fontWeight(.semibold).foregroundStyle(.secondary).textCase(.uppercase)
+            }
+            VStack(spacing: 8) { content }.padding(12).background(.background.secondary).clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+private struct NovelPricingFieldRow<Content: View>: View {
+    let label: String; @ViewBuilder let content: Content
+    var body: some View {
+        HStack(alignment: .center) {
+            Text(label).font(.callout).frame(width: 90, alignment: .trailing)
+            content
+        }
+    }
+}
+
+private struct NovelPricingDiscountRow: View {
+    let label: String; let color: Color
+    @Binding var value: String; @Binding var isFree: Bool
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Circle().fill(color.opacity(0.2)).overlay(Circle().stroke(color.opacity(0.4), lineWidth: 1)).frame(width: 8, height: 8)
+            Text(label).font(.callout).frame(width: 82, alignment: .leading)
+            if isFree {
+                Text("免费").font(.caption).fontWeight(.medium).foregroundStyle(color)
+                    .padding(.horizontal, 8).padding(.vertical, 3).background(color.opacity(0.12)).clipShape(Capsule())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                HStack(spacing: 4) {
+                    TextField("1.00", text: $value).textFieldStyle(.roundedBorder).frame(width: 70)
+                    Text("折").font(.caption).foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Toggle("免费", isOn: $isFree).toggleStyle(.switch).controlSize(.mini).labelsHidden().tint(color)
+            Text("免费").font(.caption2).foregroundStyle(isFree ? color : .secondary)
         }
     }
 }
@@ -831,6 +1066,15 @@ class NovelPricingListViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    func deletePricing(_ pricing: NovelPricing) async {
+        do {
+            try await service.deletePricing(id: pricing.id)
+            await loadPricings(page: currentPage)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

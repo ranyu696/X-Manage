@@ -202,6 +202,18 @@ class AnimeService {
         )
     }
 
+    func createPricing(_ request: CreateAnimePricingRequest) async throws -> AnimePricingResponse {
+        try await api.request(endpoint: APIEndpoints.Anime.pricings, method: .post, body: request)
+    }
+
+    func updatePricing(id: Int, _ request: UpdateAnimePricingRequest) async throws -> AnimePricingResponse {
+        try await api.request(endpoint: APIEndpoints.Anime.pricingDetail(id), method: .put, body: request)
+    }
+
+    func deletePricing(id: Int) async throws {
+        try await api.requestVoid(endpoint: APIEndpoints.Anime.pricingDetail(id), method: .delete)
+    }
+
     // MARK: - 订单
     func getOrders(params: AnimeOrderListParams) async throws -> AnimeOrderListResponse {
         try await api.request(

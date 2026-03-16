@@ -183,6 +183,57 @@ struct NovelPricingListResponse: Codable {
     let pagination: NovelPagination
 }
 
+// MARK: - 小说定价请求
+struct CreateNovelPricingRequest: Encodable {
+    let name: String
+    let price: String
+    let previewCount: Int
+    let memberDiscount: String
+    let vipDiscount: String
+    let svipDiscount: String
+    let memberFree: Bool
+    let vipFree: Bool
+    let svipFree: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name, price
+        case previewCount = "preview_count"
+        case memberDiscount = "member_discount"
+        case vipDiscount = "vip_discount"
+        case svipDiscount = "svip_discount"
+        case memberFree = "member_free"
+        case vipFree = "vip_free"
+        case svipFree = "svip_free"
+    }
+}
+
+struct UpdateNovelPricingRequest: Encodable {
+    let name: String
+    let price: String
+    let previewCount: Int
+    let memberDiscount: String
+    let vipDiscount: String
+    let svipDiscount: String
+    let memberFree: Bool
+    let vipFree: Bool
+    let svipFree: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name, price
+        case previewCount = "preview_count"
+        case memberDiscount = "member_discount"
+        case vipDiscount = "vip_discount"
+        case svipDiscount = "svip_discount"
+        case memberFree = "member_free"
+        case vipFree = "vip_free"
+        case svipFree = "svip_free"
+    }
+}
+
+struct NovelPricingResponse: Codable {
+    let pricing: NovelPricing
+}
+
 // MARK: - 小说订单
 struct NovelOrder: Codable, Identifiable {
     let id: Int

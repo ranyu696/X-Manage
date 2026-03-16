@@ -753,7 +753,7 @@ struct EpisodeDetailSheet: View {
                                 detailInfoItem("时长", detail.duration != nil ? formatDuration(detail.duration!) : "-")
                                 detailInfoItem("播放量", "\(detail.viewCount ?? 0) 次")
                                 detailInfoItem("分辨率", detail.width != nil && detail.height != nil ? "\(detail.width!)×\(detail.height!)" : "-")
-                                detailInfoItem("码率", detail.bitrate != nil ? "\(detail.bitrate! / 1000) kbps" : "-")
+                                detailInfoItem("码率", detail.bitrate != nil ? String(format: "%.1f Mbps", Double(detail.bitrate!) / 1000.0) : "-")
                             }
                             .padding()
                         }
@@ -1450,6 +1450,9 @@ struct EpisodeVideoUploadSheet: View {
     let onUpdate: () -> Void
 
     @State private var selectedVideo: URL?
+    @State private var selectedSubtitle: URL?
+    @State private var subtitlePath: String?
+    @State private var isUploadingSubtitle = false
     @State private var isUploading = false
     @State private var uploadProgress: VideoUploadProgress?
     @State private var uploadResult: CompleteVideoUploadResponse?
@@ -1590,6 +1593,64 @@ struct EpisodeVideoUploadSheet: View {
                     }
                 }
 
+                // 字幕选择（可选）
+                GroupBox("字幕文件（可选）") {
+                    VStack(spacing: 12) {
+                        if let subtitle = selectedSubtitle {
+                            HStack {
+                                Image(systemName: "captions.bubble.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(subtitlePath != nil ? .green : .orange)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(subtitle.lastPathComponent)
+                                        .fontWeight(.medium)
+                                    if isUploadingSubtitle {
+                                        HStack(spacing: 4) {
+                                            ProgressView().scaleEffect(0.6)
+                                            Text("正在上传字幕...")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    } else if subtitlePath != nil {
+                                        Text("字幕已上传，转码时将压制为硬字幕")
+                                            .font(.caption)
+                                            .foregroundStyle(.green)
+                                    } else {
+                                        Text("字幕待上传")
+                                            .font(.caption)
+                                            .foregroundStyle(.orange)
+                                    }
+                                }
+                                Spacer()
+                                if !isUploading && !isUploadingSubtitle {
+                                    Button("移除") {
+                                        selectedSubtitle = nil
+                                        subtitlePath = nil
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                }
+                            }
+                            .padding(.horizontal)
+                        } else {
+                            HStack {
+                                Text("选择 .ass / .srt 字幕文件，转码时将烧录为硬字幕")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Button("选择字幕") {
+                                    selectSubtitle()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(isUploading || isUploadingSubtitle)
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
                 // 错误信息
                 if let error = errorMessage {
                     HStack {
@@ -1610,6 +1671,7 @@ struct EpisodeVideoUploadSheet: View {
                         Label("支持 MP4、MOV、MKV、AVI 等格式", systemImage: "film")
                         Label("上传后将自动开始转码处理", systemImage: "gearshape.2")
                         Label("转码完成后可在详情页预览播放", systemImage: "play.circle")
+                        Label("可选：上传 .ass/.srt 字幕，转码时压制为硬字幕", systemImage: "captions.bubble")
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1634,13 +1696,102 @@ struct EpisodeVideoUploadSheet: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 550)
+        .frame(width: 500, height: 650)
     }
 
     private func selectVideo() {
         if let url = UploadService.shared.selectVideo() {
             selectedVideo = url
             uploadVideo(url)
+        }
+    }
+
+    private func selectSubtitle() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = []
+        panel.message = "选择字幕文件 (.ass, .ssa, .srt)"
+        if panel.runModal() == .OK, let url = panel.url {
+            let ext = url.pathExtension.lowercased()
+            guard ["ass", "ssa", "srt"].contains(ext) else {
+                errorMessage = "不支持的字幕格式，请选择 .ass、.ssa 或 .srt 文件"
+                return
+            }
+            selectedSubtitle = url
+            subtitlePath = nil
+            uploadSubtitle(url)
+        }
+    }
+
+    private func uploadSubtitle(_ url: URL) {
+        isUploadingSubtitle = true
+        errorMessage = nil
+
+        Task {
+            do {
+                // 1. 获取字幕上传 URL
+                struct SubtitleUploadURLRequest: Codable {
+                    let animeSlug: String
+                    let episodeNo: Int
+                    let lang: String
+                    let filename: String
+                    let fileSize: Int
+                    enum CodingKeys: String, CodingKey {
+                        case animeSlug = "anime_slug"
+                        case episodeNo = "episode_no"
+                        case lang, filename
+                        case fileSize = "file_size"
+                    }
+                }
+                struct SubtitleUploadURLResponse: Codable {
+                    let uploadUrl: String
+                    let subtitlePath: String
+                    let expiresIn: Int
+                    enum CodingKeys: String, CodingKey {
+                        case uploadUrl = "upload_url"
+                        case subtitlePath = "subtitle_path"
+                        case expiresIn = "expires_in"
+                    }
+                }
+
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
+                let uploadURLResponse: SubtitleUploadURLResponse = try await APIClient.shared.request(
+                    endpoint: APIEndpoints.Anime.subtitleUploadURL,
+                    method: .post,
+                    body: SubtitleUploadURLRequest(
+                        animeSlug: animeSlug,
+                        episodeNo: episode.episodeNo ?? 1,
+                        lang: "zh",
+                        filename: url.lastPathComponent,
+                        fileSize: fileSize
+                    )
+                )
+
+                // 2. 直接 PUT 字幕文件到预签名 URL
+                let subtitleData = try Data(contentsOf: url)
+                var putRequest = URLRequest(url: URL(string: uploadURLResponse.uploadUrl)!)
+                putRequest.httpMethod = "PUT"
+                putRequest.setValue("text/plain", forHTTPHeaderField: "Content-Type")
+                putRequest.httpBody = subtitleData
+                let (_, response) = try await URLSession.shared.data(for: putRequest)
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else {
+                    throw URLError(.badServerResponse)
+                }
+
+                await MainActor.run {
+                    self.subtitlePath = uploadURLResponse.subtitlePath
+                    self.isUploadingSubtitle = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "字幕上传失败: \(error.localizedDescription)"
+                    self.selectedSubtitle = nil
+                    self.subtitlePath = nil
+                    self.isUploadingSubtitle = false
+                }
+            }
         }
     }
 
@@ -1662,6 +1813,7 @@ struct EpisodeVideoUploadSheet: View {
                 animeSlug: animeSlug,
                 episodeNo: episode.episodeNo ?? 1,
                 fileUrl: url,
+                subtitlePath: subtitlePath,
                 concurrency: 2,
                 maxRetries: 3
             ) { progress in

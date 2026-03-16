@@ -221,6 +221,57 @@ struct ComicPricingListResponse: Codable {
     let pagination: PaginationMeta
 }
 
+// MARK: - 漫画定价请求
+struct CreateComicPricingRequest: Encodable {
+    let name: String
+    let price: String
+    let previewCount: Int
+    let memberDiscount: String
+    let vipDiscount: String
+    let svipDiscount: String
+    let memberFree: Bool
+    let vipFree: Bool
+    let svipFree: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name, price
+        case previewCount = "preview_count"
+        case memberDiscount = "member_discount"
+        case vipDiscount = "vip_discount"
+        case svipDiscount = "svip_discount"
+        case memberFree = "member_free"
+        case vipFree = "vip_free"
+        case svipFree = "svip_free"
+    }
+}
+
+struct UpdateComicPricingRequest: Encodable {
+    let name: String
+    let price: String
+    let previewCount: Int
+    let memberDiscount: String
+    let vipDiscount: String
+    let svipDiscount: String
+    let memberFree: Bool
+    let vipFree: Bool
+    let svipFree: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name, price
+        case previewCount = "preview_count"
+        case memberDiscount = "member_discount"
+        case vipDiscount = "vip_discount"
+        case svipDiscount = "svip_discount"
+        case memberFree = "member_free"
+        case vipFree = "vip_free"
+        case svipFree = "svip_free"
+    }
+}
+
+struct ComicPricingResponse: Codable {
+    let pricing: ComicPricing
+}
+
 // MARK: - 漫画订单
 struct ComicOrder: Codable, Identifiable {
     let id: Int

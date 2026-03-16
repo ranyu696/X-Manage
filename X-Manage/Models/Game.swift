@@ -186,6 +186,53 @@ struct GamePricingListResponse: Codable {
     let pagination: PaginationMeta
 }
 
+// MARK: - 游戏定价请求
+struct CreateGamePricingRequest: Encodable {
+    let name: String
+    let price: String
+    let memberDiscount: String
+    let vipDiscount: String
+    let svipDiscount: String
+    let memberFree: Bool
+    let vipFree: Bool
+    let svipFree: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name, price
+        case memberDiscount = "member_discount"
+        case vipDiscount = "vip_discount"
+        case svipDiscount = "svip_discount"
+        case memberFree = "member_free"
+        case vipFree = "vip_free"
+        case svipFree = "svip_free"
+    }
+}
+
+struct UpdateGamePricingRequest: Encodable {
+    let name: String
+    let price: String
+    let memberDiscount: String
+    let vipDiscount: String
+    let svipDiscount: String
+    let memberFree: Bool
+    let vipFree: Bool
+    let svipFree: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name, price
+        case memberDiscount = "member_discount"
+        case vipDiscount = "vip_discount"
+        case svipDiscount = "svip_discount"
+        case memberFree = "member_free"
+        case vipFree = "vip_free"
+        case svipFree = "svip_free"
+    }
+}
+
+struct GamePricingResponse: Codable {
+    let pricing: GamePricing
+}
+
 // MARK: - 游戏订单
 struct GameOrder: Codable, Identifiable {
     let id: Int
