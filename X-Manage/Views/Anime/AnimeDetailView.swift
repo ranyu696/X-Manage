@@ -1478,7 +1478,7 @@ struct EpisodeEditSheet: View {
                                             .foregroundStyle(.green)
                                         VStack(alignment: .leading) {
                                             Text("上传成功,转码任务已创建")
-                                            Text("任务ID: \(result.taskId)")
+                                            Text("任务ID: \(result.taskId ?? "—")")
                                                 .font(.caption.monospaced())
                                                 .foregroundStyle(.secondary)
                                         }

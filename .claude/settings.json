@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(protoc -Ishared/proto --go_out=shared/proto --go_opt=paths=source_relative --go-grpc_out=shared/proto --go-grpc_opt=paths=source_relative shared/proto/storage/requests/multipart.proto)",
+      "Bash(go build:*)",
+      "Bash(head -10 grep -n \"pricing\\\\|Pricing\\\\|price\\\\|Price\" /Users/xiaoxin/project/X-Manage/X-Manage/Views/Anime/AnimeDetailView.swift)",
+      "Bash(grep -r \"PUT\\\\|DELETE\\\\|POST\\\\|Route\\\\|register\\\\|path\" /Users/xiaoxin/project/Xyouacg-services/apps/admin-gateway/internal/api/comic/pricing/ --include=*.go)",
+      "Bash(head -20 grep -r \"Path\\\\|Method\" /Users/xiaoxin/project/Xyouacg-services/apps/admin-gateway/internal/api/game/pricing/routes.go)",
+      "Bash(grep -rn \"screenshot\\\\|vframes\\\\|jpg\\\\|webp\" /Users/xiaoxin/project/Xyouacg-services/apps/transcode-service/ --include=*.go)",
+      "Bash(git merge:*)",
+      "Bash(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -version)"
+    ]
+  }
+}

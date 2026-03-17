@@ -155,4 +155,22 @@ enum APIEndpoints {
         static let devices = "\(basePrefix)/app-versions/devices"
         static let updateLogs = "\(basePrefix)/app-versions/update-logs"
     }
+
+    // MARK: - CDN 节点管理
+    enum CDN {
+        static let nodes = "\(basePrefix)/cdn/nodes"
+        static func node(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)" }
+        static func nodeStats(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/stats" }
+        static func nodeEvict(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/cache/evict" }
+        static func nodeClear(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/cache/clear" }
+        static func nodeDownloads(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/downloads" }
+        static func nodeHealth(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/health" }
+        static func nodeConfigPush(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/config/push" }
+        static func nodeRunningConfig(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/config" }
+        static func nodeDomains(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/domains" }
+        static func nodeDomain(_ nodeId: Int, _ domainId: Int) -> String { "\(basePrefix)/cdn/nodes/\(nodeId)/domains/\(domainId)" }
+        static func nodeDomainSync(_ id: Int) -> String { "\(basePrefix)/cdn/nodes/\(id)/domains/sync" }
+        static let downloads = "\(basePrefix)/cdn/downloads"
+        static let allStats = "\(basePrefix)/cdn/stats"
+    }
 }
