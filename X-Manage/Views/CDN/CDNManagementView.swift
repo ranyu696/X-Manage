@@ -398,6 +398,7 @@ struct CDNNodeDomainsTab: View {
     @State private var errorMessage: String?
     @State private var showAddSheet = false
     @State private var editingDomain: CDNNodeDomain?
+    @State private var syncMessage: (text: String, isError: Bool)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -414,9 +415,15 @@ struct CDNNodeDomainsTab: View {
                     .width(min: 160, ideal: 200)
 
                     TableColumn("目标地址") { d in
-                        Text(d.target)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
+                        if d.target.isEmpty {
+                            Text("R2: \(d.bucketName)")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.blue)
+                        } else {
+                            Text(d.target)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     TableColumn("状态") { d in
@@ -455,6 +462,18 @@ struct CDNNodeDomainsTab: View {
                 }
             }
 
+            if let msg = syncMessage {
+                HStack {
+                    Label(msg.text, systemImage: msg.isError ? "exclamationmark.triangle" : "checkmark.circle.fill")
+                        .foregroundStyle(msg.isError ? .red : .green)
+                        .font(.caption)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(msg.isError ? .red.opacity(0.05) : .green.opacity(0.05))
+            }
+
             if let err = errorMessage, !domains.isEmpty {
                 HStack {
                     Label(err, systemImage: "exclamationmark.triangle")
@@ -472,6 +491,13 @@ struct CDNNodeDomainsTab: View {
                 Button { Task { await loadDomains() } } label: {
                     Image(systemName: "arrow.clockwise")
                 }
+                .disabled(isLoading)
+            }
+            ToolbarItem(placement: .automatic) {
+                Button { Task { await syncDomains() } } label: {
+                    Label("全量同步", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .buttonStyle(.bordered)
                 .disabled(isLoading)
             }
             ToolbarItem(placement: .automatic) {
@@ -532,6 +558,18 @@ struct CDNNodeDomainsTab: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func syncDomains() async {
+        isLoading = true
+        syncMessage = nil
+        do {
+            try await CDNService.shared.syncNodeDomains(node.id)
+            syncMessage = ("域名已全量同步到 cdn-proxy", false)
+        } catch {
+            syncMessage = (error.localizedDescription, true)
+        }
+        isLoading = false
     }
 }
 
@@ -829,6 +867,7 @@ struct CDNDomainFormView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var domain = ""
     @State private var target = ""
+    @State private var bucketName = ""
     @State private var note = ""
     @State private var enabled = true
     @State private var forceHttps = true
@@ -840,6 +879,7 @@ struct CDNDomainFormView: View {
         if case .edit(let d) = mode {
             _domain = State(initialValue: d.domain)
             _target = State(initialValue: d.target)
+            _bucketName = State(initialValue: d.bucketName)
             _note = State(initialValue: d.note)
             _enabled = State(initialValue: d.enabled)
             _forceHttps = State(initialValue: d.forceHttps)
@@ -869,8 +909,11 @@ struct CDNDomainFormView: View {
                     TextField("img.example.com", text: $domain)
                         .disabled(isEdit)
                 }
-                Section("反代目标（可选）") {
+                Section("反代目标（可选，不填则 R2 直连）") {
                     TextField("http://backend:8080", text: $target)
+                }
+                Section("R2 存储桶名称（反代目标为空时必填）") {
+                    TextField("xyouacg-anime", text: $bucketName)
                 }
                 Section("备注") {
                     TextField("用途说明", text: $note)
@@ -897,6 +940,7 @@ struct CDNDomainFormView: View {
                     onSave(CDNDomainAddRequest(
                         domain: domain,
                         target: target,
+                        bucketName: bucketName,
                         note: note,
                         enabled: enabled,
                         forceHttps: forceHttps,
@@ -909,7 +953,7 @@ struct CDNDomainFormView: View {
             }
             .padding()
         }
-        .frame(width: 420, height: 440)
+        .frame(width: 420, height: 520)
     }
 }
 

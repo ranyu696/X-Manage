@@ -71,6 +71,7 @@ struct CDNNodeDomain: Codable, Identifiable {
     var nodeId: Int
     var domain: String
     var target: String
+    var bucketName: String
     var note: String
     var enabled: Bool
     var forceHttps: Bool
@@ -83,6 +84,7 @@ struct CDNNodeDomain: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, domain, target, note, enabled
         case nodeId = "node_id"
+        case bucketName = "bucket_name"
         case forceHttps = "force_https"
         case cacheTtl = "cache_ttl"
         case certStatus = "cert_status"
@@ -295,6 +297,7 @@ struct CDNNodeCreateRequest: Encodable {
 struct CDNDomainAddRequest: Encodable {
     var domain: String
     var target: String
+    var bucketName: String
     var note: String
     var enabled: Bool
     var forceHttps: Bool
@@ -302,6 +305,7 @@ struct CDNDomainAddRequest: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case domain, target, note, enabled
+        case bucketName = "bucket_name"
         case forceHttps = "force_https"
         case cacheTtl = "cache_ttl"
     }
