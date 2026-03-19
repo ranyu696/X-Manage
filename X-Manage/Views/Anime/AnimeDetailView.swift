@@ -986,63 +986,62 @@ struct EpisodeDetailSheet: View {
 
                                     Divider()
 
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 12) {
-                                            ForEach(screenshots, id: \.self) { url in
-                                                AsyncImage(url: URL(string: url)) { image in
-                                                    image
-                                                        .resizable()
-                                                        .aspectRatio(contentMode: .fill)
-                                                } placeholder: {
-                                                    Rectangle()
-                                                        .fill(.quaternary)
-                                                }
-                                                .frame(width: 192, height: 108)
-                                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                                .overlay(alignment: .bottom) {
-                                                    if isSettingCover {
-                                                        ProgressView()
-                                                            .padding(4)
-                                                    }
-                                                }
-                                                .contextMenu {
-                                                    Button {
-                                                        guard let key = storageKey(from: url) else { return }
-                                                        isSettingCover = true
-                                                        Task {
-                                                            do {
-                                                                try await AnimeService.shared.updateEpisodeCover(episodeId: episode.id, cover: key)
-                                                                onUpdate()
-                                                            } catch {
-                                                                errorMessage = error.localizedDescription
-                                                            }
-                                                            isSettingCover = false
-                                                        }
-                                                    } label: {
-                                                        Label("设为封面", systemImage: "photo.badge.checkmark")
-                                                    }
-
-                                                    Button {
-                                                        guard let key = storageKey(from: url) else { return }
-                                                        isSettingCover = true
-                                                        Task {
-                                                            do {
-                                                                try await AnimeService.shared.updateEpisodeFanart(episodeId: episode.id, fanart: key)
-                                                                onUpdate()
-                                                            } catch {
-                                                                errorMessage = error.localizedDescription
-                                                            }
-                                                            isSettingCover = false
-                                                        }
-                                                    } label: {
-                                                        Label("设为横图", systemImage: "photo.on.rectangle.angled")
-                                                    }
-                                                }
-                                                .help("右键可设为封面或横图")
+                                    let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
+                                    LazyVGrid(columns: columns, spacing: 8) {
+                                        ForEach(screenshots, id: \.self) { url in
+                                            AsyncImage(url: URL(string: url)) { image in
+                                                image
+                                                    .resizable()
+                                                    .aspectRatio(16/9, contentMode: .fill)
+                                            } placeholder: {
+                                                Rectangle()
+                                                    .fill(.quaternary)
+                                                    .aspectRatio(16/9, contentMode: .fill)
                                             }
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                            .overlay(alignment: .bottom) {
+                                                if isSettingCover {
+                                                    ProgressView()
+                                                        .padding(4)
+                                                }
+                                            }
+                                            .contextMenu {
+                                                Button {
+                                                    guard let key = storageKey(from: url) else { return }
+                                                    isSettingCover = true
+                                                    Task {
+                                                        do {
+                                                            try await AnimeService.shared.updateEpisodeCover(episodeId: episode.id, cover: key)
+                                                            onUpdate()
+                                                        } catch {
+                                                            errorMessage = error.localizedDescription
+                                                        }
+                                                        isSettingCover = false
+                                                    }
+                                                } label: {
+                                                    Label("设为封面", systemImage: "photo.badge.checkmark")
+                                                }
+
+                                                Button {
+                                                    guard let key = storageKey(from: url) else { return }
+                                                    isSettingCover = true
+                                                    Task {
+                                                        do {
+                                                            try await AnimeService.shared.updateEpisodeFanart(episodeId: episode.id, fanart: key)
+                                                            onUpdate()
+                                                        } catch {
+                                                            errorMessage = error.localizedDescription
+                                                        }
+                                                        isSettingCover = false
+                                                    }
+                                                } label: {
+                                                    Label("设为横图", systemImage: "photo.on.rectangle.angled")
+                                                }
+                                            }
+                                            .help("右键可设为封面或横图")
                                         }
-                                        .padding()
                                     }
+                                    .padding()
                                 }
                             }
                         }
