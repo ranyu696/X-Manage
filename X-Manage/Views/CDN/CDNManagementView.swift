@@ -433,10 +433,17 @@ struct CDNNodeDomainsTab: View {
                     }
                     .width(50)
 
-                    TableColumn("备注") { d in
-                        Text(d.note)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    TableColumn("同步状态") { d in
+                        if let err = d.certError, !err.isEmpty {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .lineLimit(2)
+                        } else {
+                            Text("正常")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
 
                     TableColumn("操作") { d in
@@ -564,8 +571,12 @@ struct CDNNodeDomainsTab: View {
         isLoading = true
         syncMessage = nil
         do {
-            try await CDNService.shared.syncNodeDomains(node.id)
-            syncMessage = ("域名已全量同步到 cdn-proxy", false)
+            let result = try await CDNService.shared.syncNodeDomains(node.id)
+            if let errors = result.errors, !errors.isEmpty {
+                syncMessage = ("同步部分失败 (成功 \(result.synced)/跳过 \(result.skipped))：\(errors.joined(separator: "；"))", true)
+            } else {
+                syncMessage = ("同步成功：\(result.synced) 个域名已推送，\(result.skipped) 个已跳过", false)
+            }
         } catch {
             syncMessage = (error.localizedDescription, true)
         }

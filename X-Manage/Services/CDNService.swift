@@ -104,8 +104,19 @@ class CDNService: ObservableObject {
         try await client.requestVoid(endpoint: APIEndpoints.CDN.nodeConfigPush(id), method: .post)
     }
 
-    func syncNodeDomains(_ id: Int) async throws {
-        try await client.requestVoid(endpoint: APIEndpoints.CDN.nodeDomainSync(id), method: .post)
+    struct SyncResult: Decodable {
+        let nodeId: Int
+        let synced: Int
+        let skipped: Int
+        let errors: [String]?
+        enum CodingKeys: String, CodingKey {
+            case nodeId = "node_id"
+            case synced, skipped, errors
+        }
+    }
+
+    func syncNodeDomains(_ id: Int) async throws -> SyncResult {
+        try await client.request(endpoint: APIEndpoints.CDN.nodeDomainSync(id), method: .post)
     }
 
     func getNodeRunningConfig(_ id: Int) async throws -> CDNRunningConfig {
