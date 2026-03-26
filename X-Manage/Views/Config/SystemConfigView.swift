@@ -227,6 +227,36 @@ struct PaymentConfigView: View {
                     .padding()
                 }
 
+                // 通道3 - 支付宝配置
+                GroupBox("通道3 - 支付宝配置（金额单位分）") {
+                    VStack(spacing: 12) {
+                        ConfigToggle(label: "启用通道3支付宝", isOn: $viewModel.config.ch3AlipayEnabled.bound)
+                        ConfigTextField(label: "网关地址", text: $viewModel.config.ch3AlipayGateway.bound)
+                        ConfigTextField(label: "商户编号(partnerid)", text: $viewModel.config.ch3AlipayPid.bound)
+                        ConfigSecureField(label: "密钥(key)", text: $viewModel.config.ch3AlipaySecret.bound)
+                        ConfigTextField(label: "支付类型(paytype)", text: $viewModel.config.ch3AlipayPaytype.bound)
+                        ConfigTextField(label: "Web回调", text: $viewModel.config.ch3AlipayNotifyWeb.bound)
+                        ConfigTextField(label: "移动端回调", text: $viewModel.config.ch3AlipayNotifyMobile.bound)
+                        ConfigTextField(label: "PC回调", text: $viewModel.config.ch3AlipayNotifyPc.bound)
+                    }
+                    .padding()
+                }
+
+                // 通道3 - 微信支付配置
+                GroupBox("通道3 - 微信支付配置（金额单位分）") {
+                    VStack(spacing: 12) {
+                        ConfigToggle(label: "启用通道3微信支付", isOn: $viewModel.config.ch3WxpayEnabled.bound)
+                        ConfigTextField(label: "网关地址", text: $viewModel.config.ch3WxpayGateway.bound)
+                        ConfigTextField(label: "商户编号(partnerid)", text: $viewModel.config.ch3WxpayPid.bound)
+                        ConfigSecureField(label: "密钥(key)", text: $viewModel.config.ch3WxpaySecret.bound)
+                        ConfigTextField(label: "支付类型(paytype)", text: $viewModel.config.ch3WxpayPaytype.bound)
+                        ConfigTextField(label: "Web回调", text: $viewModel.config.ch3WxpayNotifyWeb.bound)
+                        ConfigTextField(label: "移动端回调", text: $viewModel.config.ch3WxpayNotifyMobile.bound)
+                        ConfigTextField(label: "PC回调", text: $viewModel.config.ch3WxpayNotifyPc.bound)
+                    }
+                    .padding()
+                }
+
                 configActionButtons(
                     isLoading: viewModel.isLoading,
                     isSaving: viewModel.isSaving,

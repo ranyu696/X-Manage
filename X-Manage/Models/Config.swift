@@ -125,6 +125,26 @@ struct PaymentConfig: Codable {
     var wxpay2NotifyMobile: String?
     var wxpay2NotifyPc: String?
 
+    // 通道3 - 支付宝配置（金额单位分，MD5小写签名）
+    var ch3AlipayEnabled: Bool?
+    var ch3AlipayGateway: String?
+    var ch3AlipayPid: String?
+    var ch3AlipaySecret: String?
+    var ch3AlipayNotifyWeb: String?
+    var ch3AlipayNotifyMobile: String?
+    var ch3AlipayNotifyPc: String?
+    var ch3AlipayPaytype: String?
+
+    // 通道3 - 微信支付配置
+    var ch3WxpayEnabled: Bool?
+    var ch3WxpayGateway: String?
+    var ch3WxpayPid: String?
+    var ch3WxpaySecret: String?
+    var ch3WxpayNotifyWeb: String?
+    var ch3WxpayNotifyMobile: String?
+    var ch3WxpayNotifyPc: String?
+    var ch3WxpayPaytype: String?
+
     enum CodingKeys: String, CodingKey {
         case alipayEnabled = "alipay_enabled"
         case alipayGateway = "alipay_gateway"
@@ -159,6 +179,24 @@ struct PaymentConfig: Codable {
         case wxpay2NotifyWeb = "wxpay2_notify_web"
         case wxpay2NotifyMobile = "wxpay2_notify_mobile"
         case wxpay2NotifyPc = "wxpay2_notify_pc"
+
+        case ch3AlipayEnabled = "ch3_alipay_enabled"
+        case ch3AlipayGateway = "ch3_alipay_gateway"
+        case ch3AlipayPid = "ch3_alipay_pid"
+        case ch3AlipaySecret = "ch3_alipay_secret"
+        case ch3AlipayNotifyWeb = "ch3_alipay_notify_web"
+        case ch3AlipayNotifyMobile = "ch3_alipay_notify_mobile"
+        case ch3AlipayNotifyPc = "ch3_alipay_notify_pc"
+        case ch3AlipayPaytype = "ch3_alipay_paytype"
+
+        case ch3WxpayEnabled = "ch3_wxpay_enabled"
+        case ch3WxpayGateway = "ch3_wxpay_gateway"
+        case ch3WxpayPid = "ch3_wxpay_pid"
+        case ch3WxpaySecret = "ch3_wxpay_secret"
+        case ch3WxpayNotifyWeb = "ch3_wxpay_notify_web"
+        case ch3WxpayNotifyMobile = "ch3_wxpay_notify_mobile"
+        case ch3WxpayNotifyPc = "ch3_wxpay_notify_pc"
+        case ch3WxpayPaytype = "ch3_wxpay_paytype"
     }
 }
 
