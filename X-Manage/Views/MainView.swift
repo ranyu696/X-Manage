@@ -35,6 +35,7 @@ enum NavigationItem: String, Hashable, Identifiable {
 
     // 系统管理
     case users = "用户管理"
+    case memberships = "会员管理"
     case categories = "分类管理"
     case tags = "标签管理"
 
@@ -72,6 +73,7 @@ enum NavigationItem: String, Hashable, Identifiable {
         case .animeOrders: return "list.clipboard"
         case .animeTranscode: return "waveform"
         case .users: return "person.2.fill"
+        case .memberships: return "crown.fill"
         case .categories: return "folder.fill"
         case .tags: return "tag.fill"
         case .comments: return "bubble.left.and.bubble.right.fill"
@@ -184,6 +186,9 @@ struct MainView: View {
                 Section("系统管理") {
                     NavigationLink(value: NavigationItem.users) {
                         Label("用户管理", systemImage: "person.2.fill")
+                    }
+                    NavigationLink(value: NavigationItem.memberships) {
+                        Label("会员管理", systemImage: "crown.fill")
                     }
                     NavigationLink(value: NavigationItem.categories) {
                         Label("分类管理", systemImage: "folder.fill")
@@ -309,6 +314,8 @@ struct MainView: View {
         // 其他
         case .users:
             UserListView()
+        case .memberships:
+            MembershipListView()
         case .categories:
             CategoryListView()
         case .tags:

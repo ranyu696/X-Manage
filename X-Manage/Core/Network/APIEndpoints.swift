@@ -109,6 +109,13 @@ enum APIEndpoints {
         static func vip(_ id: Int) -> String { "\(basePrefix)/users/\(id)/vip" }
         static func ban(_ id: Int) -> String { "\(basePrefix)/users/\(id)/ban" }
         static func unban(_ id: Int) -> String { "\(basePrefix)/users/\(id)/unban" }
+        static func membership(_ id: Int) -> String { "\(basePrefix)/users/\(id)/membership" }
+        static func membershipEvents(_ id: Int) -> String { "\(basePrefix)/users/\(id)/membership/events" }
+    }
+
+    // MARK: - 会员（订阅权益）
+    enum Memberships {
+        static let list = "\(basePrefix)/memberships"
     }
 
     // MARK: - 分类

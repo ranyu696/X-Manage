@@ -17,6 +17,7 @@ struct UserDetailView: View {
     @State private var showBalanceSheet = false
     @State private var showBanConfirm = false
     @State private var showCancelVipConfirm = false
+    @State private var showMembershipEventsSheet = false
 
     init(user: User) {
         self.user = user
@@ -64,6 +65,18 @@ struct UserDetailView: View {
         }
         .sheet(isPresented: $showBalanceSheet) {
             BalanceOperationSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showMembershipEventsSheet) {
+            MembershipEventsSheet(
+                username: viewModel.currentUser.username,
+                events: viewModel.membershipEvents,
+                isLoading: viewModel.isLoadingEvents,
+                currentPage: viewModel.eventsCurrentPage,
+                totalPages: viewModel.eventsTotalPages,
+                onPageChange: { page in
+                    Task { await viewModel.loadMembershipEvents(page: page) }
+                }
+            )
         }
         .alert("确认封禁", isPresented: $showBanConfirm) {
             Button("取消", role: .cancel) { }
@@ -430,7 +443,80 @@ struct UserDetailView: View {
                         .padding(.vertical, 8)
                     }
                 }
+
+                // 会员实体（订阅权益模型）—— 权威到期时间以此为准
+                membershipEntityView
             }
+        }
+    }
+
+    // MARK: - 会员实体（订阅权益）
+    @ViewBuilder
+    private var membershipEntityView: some View {
+        if let m = viewModel.membership {
+            Divider()
+            HStack {
+                Text("会员实体")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(m.tierDisplay)
+                    .font(.caption.bold())
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background((m.tierEnum?.color ?? .gray).opacity(0.15))
+                    .foregroundStyle(m.tierEnum?.color ?? .gray)
+                    .clipShape(Capsule())
+                Text(m.statusDisplay)
+                    .font(.caption.bold())
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background((m.statusEnum?.color ?? .gray).opacity(0.15))
+                    .foregroundStyle(m.statusEnum?.color ?? .gray)
+                    .clipShape(Capsule())
+            }
+            .padding(.vertical, 8)
+            Divider()
+            HStack {
+                Text("权威到期")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(formatDateTime(m.currentPeriodEnd))
+                    .foregroundStyle(isExpiringSoon(m.currentPeriodEnd) ? .orange : .primary)
+            }
+            .padding(.vertical, 8)
+            if let grace = m.graceUntil, !grace.isEmpty {
+                Divider()
+                InfoRow(title: "宽限截止", value: formatDateTime(grace))
+            }
+            Divider()
+            InfoRow(title: "来源", value: m.sourceDisplay)
+            if let order = m.lastOrderId, !order.isEmpty {
+                Divider()
+                InfoRow(title: "最近订单", value: order)
+            }
+            Divider()
+            Button {
+                Task { await viewModel.loadMembershipEvents() }
+                showMembershipEventsSheet = true
+            } label: {
+                Label("查看会员事件审计", systemImage: "clock.arrow.circlepath")
+                    .font(.caption)
+            }
+            .buttonStyle(.borderless)
+            .padding(.vertical, 8)
+        } else if viewModel.membershipLoaded {
+            Divider()
+            HStack {
+                Text("会员实体")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("无记录")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 8)
         }
     }
 
@@ -1874,12 +1960,21 @@ class UserDetailViewModel: ObservableObject {
     @Published var commentCurrentPage = 1
     @Published var commentTotalPages = 1
 
+    // 会员（订阅权益）相关
+    @Published var membership: Membership?
+    @Published var membershipLoaded = false
+    @Published var membershipEvents: [MembershipEvent] = []
+    @Published var isLoadingEvents = false
+    @Published var eventsCurrentPage = 1
+    @Published var eventsTotalPages = 1
+
     private let service = UserService.shared
     private let commentService = CommentService.shared
     private let gameService = GameService.shared
     private let comicService = ComicService.shared
     private let novelService = NovelService.shared
     private let paymentService = PaymentService.shared
+    private let membershipService = MembershipService.shared
 
     init(user: User) {
         self.currentUser = user
@@ -1889,14 +1984,39 @@ class UserDetailViewModel: ObservableObject {
         isLoading = true
         do {
             currentUser = try await service.getDetail(id: currentUser.id)
-            // 同时加载订单、支付和评论
+            // 同时加载订单、支付、评论和会员
             await loadOrdersForCurrentType()
             await loadUserPayments()
             await loadCommentsForCurrentType()
+            await loadMembership()
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    // MARK: - 会员相关方法
+    func loadMembership() async {
+        do {
+            let response = try await membershipService.getMembership(userId: currentUser.id)
+            membership = response.found ? response.membership : nil
+        } catch {
+            // 会员加载失败不影响主页面
+        }
+        membershipLoaded = true
+    }
+
+    func loadMembershipEvents(page: Int = 1) async {
+        isLoadingEvents = true
+        eventsCurrentPage = page
+        do {
+            let response = try await membershipService.getEvents(userId: currentUser.id, page: page)
+            membershipEvents = response.events
+            eventsTotalPages = max(response.pagination.totalPages, 1)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoadingEvents = false
     }
 
     // MARK: - 订单相关方法
