@@ -90,6 +90,7 @@ struct AppVersion: Codable, Identifiable {
     // 可选字段
     let description: String?
     let downloadUrl: String?
+    let updaterUrl: String?
     let fileSize: Int?
     let md5: String?
     let signature: String?
@@ -105,6 +106,7 @@ struct AppVersion: Codable, Identifiable {
         case id, version, platform, status, title, description, md5, signature
         case buildNumber = "build_number"
         case downloadUrl = "download_url"
+        case updaterUrl = "updater_url"
         case fileSize = "file_size"
         case minVersion = "min_version"
         case minOsVersion = "min_os_version"
@@ -178,6 +180,7 @@ struct CreateAppVersionRequest: Codable {
     let updateType: AppUpdateType
     let description: String?
     let downloadUrl: String?
+    let updaterUrl: String?
     let fileSize: Int?
     let md5: String?
     let signature: String?
@@ -188,6 +191,7 @@ struct CreateAppVersionRequest: Codable {
         case version, platform, title, description, md5, signature
         case buildNumber = "build_number"
         case downloadUrl = "download_url"
+        case updaterUrl = "updater_url"
         case fileSize = "file_size"
         case minVersion = "min_version"
         case minOsVersion = "min_os_version"
@@ -197,16 +201,19 @@ struct CreateAppVersionRequest: Codable {
 
 // MARK: - 更新版本请求
 struct UpdateAppVersionRequest: Encodable {
-    var title: String?
-    var description: String?
-    var downloadUrl: String?
-    var fileSize: Int?
-    var md5: String?
-    var updateType: AppUpdateType?
+    var title: String? = nil
+    var description: String? = nil
+    var downloadUrl: String? = nil
+    var updaterUrl: String? = nil
+    var fileSize: Int? = nil
+    var md5: String? = nil
+    var signature: String? = nil
+    var updateType: AppUpdateType? = nil
 
     enum CodingKeys: String, CodingKey {
-        case title, description, md5
+        case title, description, md5, signature
         case downloadUrl = "download_url"
+        case updaterUrl = "updater_url"
         case fileSize = "file_size"
         case updateType = "update_type"
     }
@@ -216,8 +223,10 @@ struct UpdateAppVersionRequest: Encodable {
         if let title = title { try container.encode(title, forKey: .title) }
         if let description = description { try container.encode(description, forKey: .description) }
         if let downloadUrl = downloadUrl { try container.encode(downloadUrl, forKey: .downloadUrl) }
+        if let updaterUrl = updaterUrl { try container.encode(updaterUrl, forKey: .updaterUrl) }
         if let fileSize = fileSize { try container.encode(fileSize, forKey: .fileSize) }
         if let md5 = md5 { try container.encode(md5, forKey: .md5) }
+        if let signature = signature { try container.encode(signature, forKey: .signature) }
         if let updateType = updateType { try container.encode(updateType, forKey: .updateType) }
     }
 }

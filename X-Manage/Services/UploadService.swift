@@ -6,6 +6,7 @@
 
 import Foundation
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - 上传请求/响应模型
 
@@ -395,6 +396,35 @@ extension UploadService {
             return nil
         }
 
+        return panel.url
+    }
+
+    /// 选择 Tauri 自动更新产物（Windows 为 .nsis.zip）
+    func selectUpdaterArtifact() -> URL? {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        // .nsis.zip 实为 zip；放开 data 以兼容各平台更新产物
+        panel.allowedContentTypes = [.zip, .data]
+        panel.message = "选择自动更新产物（Windows 为 .nsis.zip）"
+
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
+    }
+
+    /// 选择签名文件（.sig，文本内容即签名字符串）
+    func selectSignatureFile() -> URL? {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        var types: [UTType] = [.text, .data]
+        if let sig = UTType(filenameExtension: "sig") { types.insert(sig, at: 0) }
+        panel.allowedContentTypes = types
+        panel.message = "选择签名文件（.sig）"
+
+        guard panel.runModal() == .OK else { return nil }
         return panel.url
     }
 }

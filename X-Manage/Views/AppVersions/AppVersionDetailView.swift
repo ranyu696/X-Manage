@@ -175,6 +175,26 @@ struct AppVersionDetailView: View {
                                                     .textSelection(.enabled)
                                             }
                                         }
+                                        if let updaterUrl = version.updaterUrl, !updaterUrl.isEmpty {
+                                            GridRow {
+                                                Text("自动更新产物")
+                                                    .foregroundStyle(.secondary)
+                                                Text(updaterUrl)
+                                                    .font(.caption.monospaced())
+                                                    .textSelection(.enabled)
+                                                    .lineLimit(2)
+                                            }
+                                        }
+                                        if let signature = version.signature, !signature.isEmpty {
+                                            GridRow {
+                                                Text("签名")
+                                                    .foregroundStyle(.secondary)
+                                                Text(signature)
+                                                    .font(.caption.monospaced())
+                                                    .textSelection(.enabled)
+                                                    .lineLimit(2)
+                                            }
+                                        }
                                     }
                                 }
                             } else {
@@ -224,6 +244,71 @@ struct AppVersionDetailView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)
+                    }
+
+                    // 自动更新 (Tauri) —— 仅桌面端
+                    if isDesktopPlatform {
+                        GroupBox("自动更新 (Tauri)") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                // 更新产物 (.nsis.zip)
+                                if let updaterUrl = version.updaterUrl, !updaterUrl.isEmpty {
+                                    HStack(alignment: .top) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text("更新产物已上传")
+                                                .font(.subheadline)
+                                            Text(updaterUrl)
+                                                .font(.caption.monospaced())
+                                                .textSelection(.enabled)
+                                                .lineLimit(2)
+                                        }
+                                        Spacer()
+                                        Button("替换") { selectAndUploadUpdater() }
+                                            .disabled(isUploading)
+                                    }
+                                } else {
+                                    HStack {
+                                        Text("暂未上传更新产物 (.nsis.zip)")
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                        Button {
+                                            selectAndUploadUpdater()
+                                        } label: {
+                                            Label("上传 .nsis.zip", systemImage: "plus.circle")
+                                        }
+                                        .buttonStyle(.borderedProminent)
+                                        .disabled(isUploading)
+                                    }
+                                }
+
+                                Divider()
+
+                                // 签名 (.sig)
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("签名 (.sig)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        if let sig = version.signature, !sig.isEmpty {
+                                            Text(sig)
+                                                .font(.caption.monospaced())
+                                                .textSelection(.enabled)
+                                                .lineLimit(2)
+                                        } else {
+                                            Text("未设置")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    Button("选择 .sig 文件") { selectAndUploadSignature() }
+                                        .disabled(isUploading)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 8)
+                        }
                     }
 
                     // 时间信息
@@ -351,6 +436,103 @@ struct AppVersionDetailView: View {
         }
     }
 
+    // 是否桌面端（Tauri 自动更新仅适用于桌面）
+    private var isDesktopPlatform: Bool {
+        switch version.platformEnum {
+        case .windows, .macos, .linux: return true
+        default: return false
+        }
+    }
+
+    // MARK: - 自动更新产物上传
+
+    private func selectAndUploadUpdater() {
+        guard let fileUrl = uploadService.selectUpdaterArtifact() else { return }
+        Task { await uploadUpdater(fileUrl) }
+    }
+
+    private func uploadUpdater(_ fileUrl: URL) async {
+        isUploading = true
+        uploadProgress = 0
+        uploadStatus = "准备上传更新产物..."
+        errorMessage = nil
+
+        do {
+            let fileName = fileUrl.lastPathComponent
+            let fileData = try Data(contentsOf: fileUrl)
+            let fileSize = fileData.count
+            let contentType = "application/zip"
+
+            uploadStatus = "获取上传地址..."
+            uploadProgress = 0.2
+            let uploadUrlResponse = try await versionService.getUploadUrl(
+                versionId: version.id,
+                fileName: fileName,
+                contentType: contentType,
+                fileSize: fileSize
+            )
+
+            uploadStatus = "正在上传更新产物..."
+            uploadProgress = 0.3
+            try await uploadToPresignedUrl(uploadUrlResponse.uploadUrl, data: fileData, contentType: contentType)
+
+            uploadProgress = 0.8
+            uploadStatus = "保存更新地址..."
+            // 将上传后的公开地址写入 updater_url（自动更新器下载此产物）
+            let updated = try await versionService.update(
+                id: version.id,
+                request: UpdateAppVersionRequest(updaterUrl: uploadUrlResponse.downloadUrl)
+            )
+
+            uploadProgress = 1.0
+            uploadStatus = "上传完成"
+            await MainActor.run {
+                version = updated
+                onUpdate?(updated)
+                isUploading = false
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                isUploading = false
+            }
+        }
+    }
+
+    private func selectAndUploadSignature() {
+        guard let fileUrl = uploadService.selectSignatureFile() else { return }
+        Task { await uploadSignature(fileUrl) }
+    }
+
+    private func uploadSignature(_ fileUrl: URL) async {
+        isUploading = true
+        uploadStatus = "读取签名文件..."
+        errorMessage = nil
+
+        do {
+            let content = try String(contentsOf: fileUrl, encoding: .utf8)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !content.isEmpty else {
+                throw UploadError.invalidResponse
+            }
+            // .sig 文本内容即签名字符串，直接写入 signature
+            let updated = try await versionService.update(
+                id: version.id,
+                request: UpdateAppVersionRequest(signature: content)
+            )
+            await MainActor.run {
+                version = updated
+                onUpdate?(updated)
+                isUploading = false
+            }
+        } catch {
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+                isUploading = false
+            }
+        }
+    }
+
     private func uploadToPresignedUrl(_ url: String, data: Data, contentType: String) async throws {
         guard let uploadUrl = URL(string: url) else {
             throw UploadError.invalidUrl
@@ -431,6 +613,7 @@ struct StatItem: View {
             updateType: "OPTIONAL",
             description: "这是首个正式版本，包含以下功能：\n- 用户注册登录\n- 内容浏览\n- 个人中心",
             downloadUrl: "https://example.com/download/app-1.0.0.ipa",
+            updaterUrl: nil,
             fileSize: 52428800,
             md5: "abc123def456",
             signature: nil,

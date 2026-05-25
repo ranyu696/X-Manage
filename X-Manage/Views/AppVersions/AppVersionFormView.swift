@@ -38,6 +38,7 @@ struct AppVersionFormView: View {
     @State private var minOsVersion = ""
     @State private var updateType: AppUpdateType = .optional
     @State private var signature = ""
+    @State private var updaterUrl = ""
     // 编辑模式下使用的字段
     @State private var downloadUrl = ""
     @State private var fileSize = ""
@@ -115,7 +116,9 @@ struct AppVersionFormView: View {
                         TextField("最低支持版本", text: $minVersion, prompt: Text("可选，例如: 1.0.0"))
                         TextField("最低系统版本", text: $minOsVersion, prompt: Text("可选，例如: Android 8.0 / iOS 14.0"))
                         if platform == .windows {
-                            TextField("签名", text: $signature, prompt: Text("Windows 签名字符串"))
+                            TextField("自动更新产物地址", text: $updaterUrl, prompt: Text(".nsis.zip 直链，供 Tauri 自动更新下载"))
+                                .textContentType(.URL)
+                            TextField("签名", text: $signature, prompt: Text("对应 .nsis.zip 的 .sig 文件内容"))
                         }
                     } else if case .edit(let ver) = mode {
                         LabeledContent("最低支持版本") {
@@ -131,9 +134,12 @@ struct AppVersionFormView: View {
 
                 // 编辑模式下显示下载信息
                 if !mode.isCreate {
-                    Section("下载信息") {
-                        TextField("下载链接", text: $downloadUrl, prompt: Text("https://..."))
+                    Section("下载与自动更新") {
+                        TextField("下载链接", text: $downloadUrl, prompt: Text("完整安装包，Windows 为 .exe"))
                             .textContentType(.URL)
+                        TextField("自动更新产物地址", text: $updaterUrl, prompt: Text("Windows 为 .nsis.zip 直链，供自动更新下载"))
+                            .textContentType(.URL)
+                        TextField("签名", text: $signature, prompt: Text("对应自动更新产物的 .sig 文件内容"))
 
                         HStack {
                             TextField("文件大小 (字节)", text: $fileSize, prompt: Text("可选"))
@@ -197,6 +203,8 @@ struct AppVersionFormView: View {
             title = ver.title
             description = ver.description ?? ""
             downloadUrl = ver.downloadUrl ?? ""
+            updaterUrl = ver.updaterUrl ?? ""
+            signature = ver.signature ?? ""
             fileSize = ver.fileSize.map { String($0) } ?? ""
             md5 = ver.md5 ?? ""
             minVersion = ver.minVersion ?? ""
@@ -222,6 +230,7 @@ struct AppVersionFormView: View {
                         updateType: updateType,
                         description: description.isEmpty ? nil : description,
                         downloadUrl: nil,
+                        updaterUrl: updaterUrl.isEmpty ? nil : updaterUrl,
                         fileSize: nil,
                         md5: nil,
                         signature: signature.isEmpty ? nil : signature,
@@ -234,8 +243,10 @@ struct AppVersionFormView: View {
                         title: title,
                         description: description.isEmpty ? nil : description,
                         downloadUrl: downloadUrl.isEmpty ? nil : downloadUrl,
+                        updaterUrl: updaterUrl.isEmpty ? nil : updaterUrl,
                         fileSize: Int(fileSize),
                         md5: md5.isEmpty ? nil : md5,
+                        signature: signature.isEmpty ? nil : signature,
                         updateType: updateType
                     )
                     savedVersion = try await service.update(id: ver.id, request: request)
