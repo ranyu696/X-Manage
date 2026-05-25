@@ -250,35 +250,28 @@ struct AppVersionDetailView: View {
                     if isDesktopPlatform {
                         GroupBox("自动更新 (Tauri)") {
                             VStack(alignment: .leading, spacing: 12) {
-                                // 更新产物 (.nsis.zip)
-                                if let updaterUrl = version.updaterUrl, !updaterUrl.isEmpty {
-                                    HStack(alignment: .top) {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.green)
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text("更新产物已上传")
-                                                .font(.subheadline)
+                                // 更新产物地址：Windows 更新器复用安装包 .exe，随安装包上传自动设置，无需单独上传
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("更新产物地址（= 安装包）")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        if let updaterUrl = version.updaterUrl, !updaterUrl.isEmpty {
                                             Text(updaterUrl)
                                                 .font(.caption.monospaced())
                                                 .textSelection(.enabled)
                                                 .lineLimit(2)
+                                        } else {
+                                            Text("未设置（上传安装包后自动填入）")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
                                         }
-                                        Spacer()
-                                        Button("替换") { selectAndUploadUpdater() }
-                                            .disabled(isUploading)
                                     }
-                                } else {
-                                    HStack {
-                                        Text("暂未上传更新产物 (.nsis.zip)")
-                                            .foregroundStyle(.secondary)
-                                        Spacer()
-                                        Button {
-                                            selectAndUploadUpdater()
-                                        } label: {
-                                            Label("上传 .nsis.zip", systemImage: "plus.circle")
-                                        }
-                                        .buttonStyle(.borderedProminent)
-                                        .disabled(isUploading)
+                                    Spacer()
+                                    // 若与安装包地址不一致，可一键同步为安装包地址
+                                    if let d = version.downloadUrl, !d.isEmpty, version.updaterUrl != d {
+                                        Button("用安装包同步") { syncUpdaterFromInstaller() }
+                                            .disabled(isUploading)
                                     }
                                 }
 
@@ -413,10 +406,19 @@ struct AppVersionDetailView: View {
                 md5: md5Hash
             )
 
-            let updatedVersion = try await versionService.confirmUpload(
+            var updatedVersion = try await versionService.confirmUpload(
                 versionId: version.id,
                 request: confirmRequest
             )
+
+            // 桌面端：Tauri 更新器复用安装包 .exe，故 updater_url 同步为同一地址
+            if isDesktopPlatform {
+                uploadStatus = "同步更新地址..."
+                updatedVersion = try await versionService.update(
+                    id: version.id,
+                    request: UpdateAppVersionRequest(updaterUrl: uploadUrlResponse.downloadUrl)
+                )
+            }
 
             uploadProgress = 1.0
             uploadStatus = "上传完成"
@@ -444,57 +446,30 @@ struct AppVersionDetailView: View {
         }
     }
 
-    // MARK: - 自动更新产物上传
+    // MARK: - 自动更新
 
-    private func selectAndUploadUpdater() {
-        guard let fileUrl = uploadService.selectUpdaterArtifact() else { return }
-        Task { await uploadUpdater(fileUrl) }
-    }
-
-    private func uploadUpdater(_ fileUrl: URL) async {
+    // 将 updater_url 同步为安装包地址（Windows 更新器复用安装包 .exe）
+    private func syncUpdaterFromInstaller() {
+        guard let downloadUrl = version.downloadUrl, !downloadUrl.isEmpty else { return }
         isUploading = true
-        uploadProgress = 0
-        uploadStatus = "准备上传更新产物..."
+        uploadStatus = "同步更新地址..."
         errorMessage = nil
-
-        do {
-            let fileName = fileUrl.lastPathComponent
-            let fileData = try Data(contentsOf: fileUrl)
-            let fileSize = fileData.count
-            let contentType = "application/zip"
-
-            uploadStatus = "获取上传地址..."
-            uploadProgress = 0.2
-            let uploadUrlResponse = try await versionService.getUploadUrl(
-                versionId: version.id,
-                fileName: fileName,
-                contentType: contentType,
-                fileSize: fileSize
-            )
-
-            uploadStatus = "正在上传更新产物..."
-            uploadProgress = 0.3
-            try await uploadToPresignedUrl(uploadUrlResponse.uploadUrl, data: fileData, contentType: contentType)
-
-            uploadProgress = 0.8
-            uploadStatus = "保存更新地址..."
-            // 将上传后的公开地址写入 updater_url（自动更新器下载此产物）
-            let updated = try await versionService.update(
-                id: version.id,
-                request: UpdateAppVersionRequest(updaterUrl: uploadUrlResponse.downloadUrl)
-            )
-
-            uploadProgress = 1.0
-            uploadStatus = "上传完成"
-            await MainActor.run {
-                version = updated
-                onUpdate?(updated)
-                isUploading = false
-            }
-        } catch {
-            await MainActor.run {
-                errorMessage = error.localizedDescription
-                isUploading = false
+        Task {
+            do {
+                let updated = try await versionService.update(
+                    id: version.id,
+                    request: UpdateAppVersionRequest(updaterUrl: downloadUrl)
+                )
+                await MainActor.run {
+                    version = updated
+                    onUpdate?(updated)
+                    isUploading = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isUploading = false
+                }
             }
         }
     }
