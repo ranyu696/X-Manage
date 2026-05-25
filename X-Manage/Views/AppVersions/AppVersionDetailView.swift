@@ -175,16 +175,6 @@ struct AppVersionDetailView: View {
                                                     .textSelection(.enabled)
                                             }
                                         }
-                                        if let updaterUrl = version.updaterUrl, !updaterUrl.isEmpty {
-                                            GridRow {
-                                                Text("自动更新产物")
-                                                    .foregroundStyle(.secondary)
-                                                Text(updaterUrl)
-                                                    .font(.caption.monospaced())
-                                                    .textSelection(.enabled)
-                                                    .lineLimit(2)
-                                            }
-                                        }
                                         if let signature = version.signature, !signature.isEmpty {
                                             GridRow {
                                                 Text("签名")
@@ -246,37 +236,11 @@ struct AppVersionDetailView: View {
                         .padding(.vertical, 8)
                     }
 
-                    // 自动更新 (Tauri) —— 仅桌面端
+                    // 自动更新签名 (Tauri) —— 仅桌面端
+                    // Windows 更新器复用安装包 .exe（即 download_url），仅需额外上传 .sig 签名
                     if isDesktopPlatform {
-                        GroupBox("自动更新 (Tauri)") {
+                        GroupBox("自动更新签名 (Tauri)") {
                             VStack(alignment: .leading, spacing: 12) {
-                                // 更新产物地址：Windows 更新器复用安装包 .exe，随安装包上传自动设置，无需单独上传
-                                HStack(alignment: .top) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("更新产物地址（= 安装包）")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        if let updaterUrl = version.updaterUrl, !updaterUrl.isEmpty {
-                                            Text(updaterUrl)
-                                                .font(.caption.monospaced())
-                                                .textSelection(.enabled)
-                                                .lineLimit(2)
-                                        } else {
-                                            Text("未设置（上传安装包后自动填入）")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    Spacer()
-                                    // 若与安装包地址不一致，可一键同步为安装包地址
-                                    if let d = version.downloadUrl, !d.isEmpty, version.updaterUrl != d {
-                                        Button("用安装包同步") { syncUpdaterFromInstaller() }
-                                            .disabled(isUploading)
-                                    }
-                                }
-
-                                Divider()
-
                                 // 签名 (.sig)
                                 HStack(alignment: .top) {
                                     VStack(alignment: .leading, spacing: 4) {
@@ -406,19 +370,10 @@ struct AppVersionDetailView: View {
                 md5: md5Hash
             )
 
-            var updatedVersion = try await versionService.confirmUpload(
+            let updatedVersion = try await versionService.confirmUpload(
                 versionId: version.id,
                 request: confirmRequest
             )
-
-            // 桌面端：Tauri 更新器复用安装包 .exe，故 updater_url 同步为同一地址
-            if isDesktopPlatform {
-                uploadStatus = "同步更新地址..."
-                updatedVersion = try await versionService.update(
-                    id: version.id,
-                    request: UpdateAppVersionRequest(updaterUrl: uploadUrlResponse.downloadUrl)
-                )
-            }
 
             uploadProgress = 1.0
             uploadStatus = "上传完成"
@@ -446,33 +401,7 @@ struct AppVersionDetailView: View {
         }
     }
 
-    // MARK: - 自动更新
-
-    // 将 updater_url 同步为安装包地址（Windows 更新器复用安装包 .exe）
-    private func syncUpdaterFromInstaller() {
-        guard let downloadUrl = version.downloadUrl, !downloadUrl.isEmpty else { return }
-        isUploading = true
-        uploadStatus = "同步更新地址..."
-        errorMessage = nil
-        Task {
-            do {
-                let updated = try await versionService.update(
-                    id: version.id,
-                    request: UpdateAppVersionRequest(updaterUrl: downloadUrl)
-                )
-                await MainActor.run {
-                    version = updated
-                    onUpdate?(updated)
-                    isUploading = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isUploading = false
-                }
-            }
-        }
-    }
+    // MARK: - 自动更新签名
 
     private func selectAndUploadSignature() {
         guard let fileUrl = uploadService.selectSignatureFile() else { return }
@@ -588,7 +517,6 @@ struct StatItem: View {
             updateType: "OPTIONAL",
             description: "这是首个正式版本，包含以下功能：\n- 用户注册登录\n- 内容浏览\n- 个人中心",
             downloadUrl: "https://example.com/download/app-1.0.0.ipa",
-            updaterUrl: nil,
             fileSize: 52428800,
             md5: "abc123def456",
             signature: nil,

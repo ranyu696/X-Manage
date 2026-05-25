@@ -218,7 +218,6 @@ struct AppVersionFormView: View {
                         updateType: updateType,
                         description: description.isEmpty ? nil : description,
                         downloadUrl: nil,
-                        updaterUrl: nil,
                         fileSize: nil,
                         md5: nil,
                         signature: nil,
