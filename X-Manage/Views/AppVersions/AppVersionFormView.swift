@@ -30,7 +30,7 @@ struct AppVersionFormView: View {
 
     // 表单字段
     @State private var version = ""
-    @State private var buildNumber = ""
+    @State private var buildNumber: Int = 0
     @State private var platform: AppPlatform = .ios
     @State private var title = ""
     @State private var description = ""
@@ -66,9 +66,13 @@ struct AppVersionFormView: View {
                     HStack {
                         TextField("版本号", text: $version, prompt: Text("例如: 1.0.0"))
                             .disabled(!mode.isCreate)
-                        TextField("Build号", text: $buildNumber, prompt: Text("例如: 100"))
-                            .disabled(!mode.isCreate)
-                            .frame(width: 100)
+                        TextField(
+                            "Build号",
+                            value: $buildNumber,
+                            format: .number.grouping(.never)
+                        )
+                        .disabled(!mode.isCreate)
+                        .frame(width: 100)
                     }
 
                     if mode.isCreate {
@@ -90,10 +94,11 @@ struct AppVersionFormView: View {
                     }
 
                     Picker("更新类型", selection: $updateType) {
-                        ForEach(AppUpdateType.allCases, id: \.self) { type in
+                        ForEach(AppUpdateType.allCases, id: \.rawValue) { type in
                             Text(type.displayName).tag(type)
                         }
                     }
+                    .pickerStyle(.menu)
                 }
 
                 Section("基本信息") {
@@ -179,7 +184,7 @@ struct AppVersionFormView: View {
 
     private var isValid: Bool {
         if mode.isCreate {
-            return !version.isEmpty && !buildNumber.isEmpty && !title.isEmpty
+            return !version.isEmpty && buildNumber > 0 && !title.isEmpty
         } else {
             return !title.isEmpty
         }
@@ -188,7 +193,7 @@ struct AppVersionFormView: View {
     private func loadExistingData() {
         if case .edit(let ver) = mode {
             version = ver.version
-            buildNumber = String(ver.buildNumber)
+            buildNumber = ver.buildNumber
             platform = ver.platformEnum ?? .ios
             title = ver.title
             description = ver.description ?? ""
@@ -210,9 +215,16 @@ struct AppVersionFormView: View {
                 let savedVersion: AppVersion
 
                 if mode.isCreate {
+                    guard buildNumber > 0 else {
+                        await MainActor.run {
+                            errorMessage = "Build号必须为正整数"
+                            isLoading = false
+                        }
+                        return
+                    }
                     let request = CreateAppVersionRequest(
                         version: version,
-                        buildNumber: Int(buildNumber) ?? 1,
+                        buildNumber: buildNumber,
                         platform: platform,
                         title: title,
                         updateType: updateType,
