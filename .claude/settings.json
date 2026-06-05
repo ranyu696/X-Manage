@@ -8,7 +8,31 @@
       "Bash(head -20 grep -r \"Path\\\\|Method\" /Users/xiaoxin/project/Xyouacg-services/apps/admin-gateway/internal/api/game/pricing/routes.go)",
       "Bash(grep -rn \"screenshot\\\\|vframes\\\\|jpg\\\\|webp\" /Users/xiaoxin/project/Xyouacg-services/apps/transcode-service/ --include=*.go)",
       "Bash(git merge:*)",
-      "Bash(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -version)"
+      "Bash(DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -version)",
+      "Bash(makensis -V1 /tmp/test.nsi)",
+      "Bash(makensis -V1 /tmp/test2.nsi)",
+      "Read(//opt/homebrew/Cellar/makensis/3.12/bin/**)",
+      "Bash(makensis -HDRINFO)",
+      "Bash(makensis -V4 test.nsi)",
+      "Read(//opt/homebrew/Cellar/makensis/3.12/share/nsis/Plugins/x86-unicode/**)",
+      "Bash(makensis -V4 -NOCONFIG -X'!addincludedir \"/tmp\"' test.nsi)",
+      "Bash(makensis -V2 test_nocomp.nsi)",
+      "Bash(makensis -V2 /tmp/test_zlib.nsi)",
+      "Bash(otool -L /opt/homebrew/bin/makensis)",
+      "Read(//usr/lib/**)",
+      "Bash(sw_vers)",
+      "Bash(xcode-select -p)",
+      "Bash(pkgutil --pkg-info=com.apple.pkg.CLTools_Executables)",
+      "Bash(cmake --version)",
+      "Bash(makensis -CMDHELP)",
+      "Bash(makensis /tmp/empty.nsi)",
+      "Bash(makensis -)",
+      "Bash(rm -f test-min.exe)",
+      "Bash(makensis -V4 test_min.nsi)",
+      "Bash(makensis -V4 /tmp/test_ansi.nsi)",
+      "Bash(rm -f test-eng.exe)",
+      "Bash(makensis -V2 test_eng.nsi)",
+      "Bash(makensis -V2 /tmp/test_simpch.nsi)"
     ]
   }
 }

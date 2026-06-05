@@ -44,6 +44,7 @@ enum NavigationItem: String, Hashable, Identifiable {
     case tickets = "工单管理"
     case emails = "邮件管理"
     case payments = "支付订单"
+    case paymentAppeals = "支付申诉"
 
     // 系统
     case appVersions = "版本列表"
@@ -80,6 +81,7 @@ enum NavigationItem: String, Hashable, Identifiable {
         case .tickets: return "ticket.fill"
         case .emails: return "envelope.fill"
         case .payments: return "creditcard.fill"
+        case .paymentAppeals: return "exclamationmark.bubble.fill"
         case .appVersions: return "app.badge"
         case .appDevices: return "iphone.gen3"
         case .appUpdateLogs: return "doc.text.magnifyingglass"
@@ -212,6 +214,9 @@ struct MainView: View {
                     NavigationLink(value: NavigationItem.payments) {
                         Label("支付订单", systemImage: "creditcard.fill")
                     }
+                    NavigationLink(value: NavigationItem.paymentAppeals) {
+                        Label("支付申诉", systemImage: "exclamationmark.bubble.fill")
+                    }
                 }
 
                 // 系统
@@ -328,6 +333,8 @@ struct MainView: View {
             EmailListView()
         case .payments:
             PaymentListView()
+        case .paymentAppeals:
+            PaymentAppealListView()
         case .appVersions:
             AppVersionListView()
         case .appDevices:

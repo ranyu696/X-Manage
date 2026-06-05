@@ -281,7 +281,7 @@ struct CreateNovelRequest: Codable {
     let description: String
     let author: String
     let series: String?
-    let tags: String?
+    let tags: String
     let categoryId: Int
     let pricingId: Int
 

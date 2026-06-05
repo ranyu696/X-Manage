@@ -146,6 +146,13 @@ enum APIEndpoints {
         static let stats = "\(basePrefix)/payments/stats"
     }
 
+    // MARK: - 支付申诉
+    enum PaymentAppeals {
+        static let list = "\(basePrefix)/payment-appeals"
+        static func detail(_ publicId: String) -> String { "\(basePrefix)/payment-appeals/\(publicId)" }
+        static func resolve(_ publicId: String) -> String { "\(basePrefix)/payment-appeals/\(publicId)/resolve" }
+    }
+
     // MARK: - 系统配置
     enum Configs {
         static let list = "\(basePrefix)/configs"

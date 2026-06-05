@@ -148,7 +148,7 @@ class NovelCreateViewModel: ObservableObject {
                 description: description.trimmingCharacters(in: .whitespacesAndNewlines),
                 author: author.trimmingCharacters(in: .whitespacesAndNewlines),
                 series: series.isEmpty ? nil : series.trimmingCharacters(in: .whitespacesAndNewlines),
-                tags: trimmedTags.isEmpty ? nil : trimmedTags,
+                tags: trimmedTags,
                 categoryId: categoryId,
                 pricingId: pricingId
             )
