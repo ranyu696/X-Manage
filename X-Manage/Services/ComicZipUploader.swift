@@ -135,9 +135,11 @@ actor ComicZipUploader {
             throw ComicZipUploadError.aborted
         }
 
-        // 读取文件信息
-        let fileData = try Data(contentsOf: fileUrl)
-        let fileSize = fileData.count
+        // 只读取文件大小，分块内容由 FileHandle 按需读取，避免把整个大文件载入内存
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileUrl.path)
+        guard let fileSize = (attributes[.size] as? NSNumber)?.intValue, fileSize > 0 else {
+            throw ComicZipUploadError.fileReadFailed
+        }
         let fileName = fileUrl.lastPathComponent
 
         // 1. 初始化上传
@@ -170,8 +172,7 @@ actor ComicZipUploader {
                     group.addTask {
                         try await self.uploadChunk(
                             sessionId: initResponse.sessionId,
-                            chunk: chunk,
-                            fileData: fileData
+                            chunk: chunk
                         )
                         return chunk.size
                     }
@@ -245,10 +246,8 @@ actor ComicZipUploader {
         )
     }
 
-    private func uploadChunk(sessionId: String, chunk: ChunkInfo, fileData: Data) async throws {
-        let startIndex = fileData.index(fileData.startIndex, offsetBy: chunk.startByte)
-        let endIndex = fileData.index(fileData.startIndex, offsetBy: chunk.endByte + 1)
-        let chunkData = fileData[startIndex..<endIndex]
+    private func uploadChunk(sessionId: String, chunk: ChunkInfo) async throws {
+        let chunkData = try readChunk(chunk)
 
         // 获取需要的值（从 @MainActor 上下文）
         let baseURL = await APIClient.shared.baseURL
@@ -291,6 +290,18 @@ actor ComicZipUploader {
         throw lastError ?? ComicZipUploadError.chunkUploadFailed(chunk: chunk.chunkNumber)
     }
 
+    // readChunk 用 FileHandle 按需读取单个分块，避免把整个大文件载入内存
+    private func readChunk(_ chunk: ChunkInfo) throws -> Data {
+        let handle = try FileHandle(forReadingFrom: fileUrl)
+        defer { try? handle.close() }
+
+        try handle.seek(toOffset: UInt64(chunk.startByte))
+        guard let data = try handle.read(upToCount: chunk.size), data.count == chunk.size else {
+            throw ComicZipUploadError.fileReadFailed
+        }
+        return data
+    }
+
     private func completeUpload(sessionId: String) async throws -> CompleteComicZipUploadResponse {
         let request = CompleteComicZipUploadRequest(
             comicId: comicId,
@@ -321,6 +332,7 @@ actor ComicZipUploader {
 enum ComicZipUploadError: LocalizedError {
     case aborted
     case invalidUrl
+    case fileReadFailed
     case chunkUploadFailed(chunk: Int)
     case completeFailed
 
@@ -330,6 +342,8 @@ enum ComicZipUploadError: LocalizedError {
             return "上传已取消"
         case .invalidUrl:
             return "无效的上传URL"
+        case .fileReadFailed:
+            return "读取文件失败"
         case .chunkUploadFailed(let chunk):
             return "分块 \(chunk) 上传失败"
         case .completeFailed:

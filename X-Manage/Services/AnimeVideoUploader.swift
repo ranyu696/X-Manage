@@ -166,9 +166,11 @@ actor AnimeVideoUploader {
             throw VideoUploadError.aborted
         }
 
-        // 读取文件信息
-        let fileData = try Data(contentsOf: fileUrl)
-        let fileSize = fileData.count
+        // 只读取文件大小，分片内容由 FileHandle 按需读取，避免把整个大文件载入内存
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileUrl.path)
+        guard let fileSize = (attributes[.size] as? NSNumber)?.intValue, fileSize > 0 else {
+            throw VideoUploadError.fileReadFailed
+        }
         let fileName = fileUrl.lastPathComponent
 
         // 1. 初始化上传，获取预签名URL列表
@@ -201,7 +203,7 @@ actor AnimeVideoUploader {
             try await withThrowingTaskGroup(of: CompletedPart.self) { group in
                 for part in batch {
                     group.addTask {
-                        let etag = try await self.uploadPart(part: part, fileData: fileData)
+                        let etag = try await self.uploadPart(part: part)
                         return CompletedPart(partNumber: part.partNumber, etag: etag)
                     }
                 }
@@ -280,10 +282,8 @@ actor AnimeVideoUploader {
         )
     }
 
-    private func uploadPart(part: VideoPartInfo, fileData: Data) async throws -> String {
-        let startIndex = fileData.index(fileData.startIndex, offsetBy: part.startByte)
-        let endIndex = fileData.index(fileData.startIndex, offsetBy: part.endByte)
-        let partData = fileData[startIndex..<endIndex]
+    private func uploadPart(part: VideoPartInfo) async throws -> String {
+        let partData = try readPart(part)
 
         var lastError: Error?
 
@@ -295,7 +295,7 @@ actor AnimeVideoUploader {
 
                 var request = URLRequest(url: url)
                 request.httpMethod = "PUT"
-                request.httpBody = Data(partData)
+                request.httpBody = partData
 
                 let (_, response) = try await URLSession.shared.data(for: request)
 
@@ -318,6 +318,19 @@ actor AnimeVideoUploader {
         }
 
         throw lastError ?? VideoUploadError.chunkUploadFailed(chunk: part.partNumber)
+    }
+
+    // readPart 用 FileHandle 按需读取单个分片，避免把整个大文件载入内存
+    // 注意 endByte 是开区间，分片大小 = endByte - startByte
+    private func readPart(_ part: VideoPartInfo) throws -> Data {
+        let handle = try FileHandle(forReadingFrom: fileUrl)
+        defer { try? handle.close() }
+
+        try handle.seek(toOffset: UInt64(part.startByte))
+        guard let data = try handle.read(upToCount: part.size), data.count == part.size else {
+            throw VideoUploadError.fileReadFailed
+        }
+        return data
     }
 
     private func completeUpload(uploadId: String, parts: [CompletedPart]) async throws -> CompleteVideoUploadResponse {
@@ -347,6 +360,7 @@ actor AnimeVideoUploader {
 enum VideoUploadError: LocalizedError {
     case aborted
     case invalidUrl
+    case fileReadFailed
     case chunkUploadFailed(chunk: Int)
     case completeFailed
 
@@ -356,6 +370,8 @@ enum VideoUploadError: LocalizedError {
             return "上传已取消"
         case .invalidUrl:
             return "无效的上传URL"
+        case .fileReadFailed:
+            return "读取文件失败"
         case .chunkUploadFailed(let chunk):
             return "分块 \(chunk) 上传失败"
         case .completeFailed:

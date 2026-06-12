@@ -186,6 +186,7 @@ struct TaskStatusBadge: View {
     private var displayName: String {
         switch status {
         case "PENDING": return "等待中"
+        case "MERGING": return "合并中"
         case "PROCESSING": return "处理中"
         case "COMPLETED": return "已完成"
         case "FAILED": return "失败"
@@ -196,6 +197,7 @@ struct TaskStatusBadge: View {
     private var textColor: Color {
         switch status {
         case "PENDING": return .orange
+        case "MERGING": return .cyan
         case "PROCESSING": return .blue
         case "COMPLETED": return .green
         case "FAILED": return .red
@@ -328,7 +330,15 @@ struct ComicUploadTaskDetailView: View {
                 .padding(.top, 8)
 
                 // 状态描述
-                if task.status == "PROCESSING" {
+                if task.status == "MERGING" {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                        Text("正在合并文件，大文件可能需要几分钟...")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if task.status == "PROCESSING" {
                     HStack(spacing: 6) {
                         ProgressView()
                             .scaleEffect(0.7)
@@ -552,7 +562,7 @@ struct ComicUploadTaskDetailView: View {
                 .disabled(isRetrying)
             }
 
-            if task.status == "PENDING" || task.status == "PROCESSING" {
+            if task.status == "PENDING" || task.status == "MERGING" || task.status == "PROCESSING" {
                 Button(role: .destructive) {
                     showCancelConfirm = true
                 } label: {
@@ -593,6 +603,7 @@ struct ComicUploadTaskDetailView: View {
     private var statusColor: Color {
         switch task.status {
         case "PENDING": return .orange
+        case "MERGING": return .cyan
         case "PROCESSING": return .blue
         case "COMPLETED": return .green
         case "FAILED": return .red
@@ -603,6 +614,7 @@ struct ComicUploadTaskDetailView: View {
     private var statusIcon: String {
         switch task.status {
         case "PENDING": return "clock"
+        case "MERGING": return "square.stack.3d.up"
         case "PROCESSING": return "arrow.up.circle"
         case "COMPLETED": return "checkmark.circle"
         case "FAILED": return "xmark.circle"
@@ -613,6 +625,7 @@ struct ComicUploadTaskDetailView: View {
     private var statusDisplayName: String {
         switch task.status {
         case "PENDING": return "等待中"
+        case "MERGING": return "合并中"
         case "PROCESSING": return "处理中"
         case "COMPLETED": return "已完成"
         case "FAILED": return "失败"
