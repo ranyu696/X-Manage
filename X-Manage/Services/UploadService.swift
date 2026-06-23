@@ -382,10 +382,10 @@ extension UploadService {
 
         switch platform {
         case .android:
-            panel.allowedContentTypes = [.init(filenameExtension: "apk")!]
+            panel.allowedContentTypes = [UTType(filenameExtension: "apk") ?? .data]
             panel.message = "选择APK文件"
         case .ios:
-            panel.allowedContentTypes = [.init(filenameExtension: "ipa")!]
+            panel.allowedContentTypes = [UTType(filenameExtension: "ipa") ?? .data]
             panel.message = "选择IPA文件"
         default:
             panel.allowedContentTypes = [.data]

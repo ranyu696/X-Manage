@@ -1147,6 +1147,7 @@ struct ComicZipUploadSheet: View {
     @State private var errorMessage: String?
     @State private var uploadResult: CompleteComicZipUploadResponse?
     @State private var startChapterSort: String = ""
+    @State private var activeJobId: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1332,10 +1333,12 @@ struct ComicZipUploadSheet: View {
                     .buttonStyle(.borderedProminent)
                 } else if isUploading {
                     Button("取消上传") {
-                        // TODO: 取消上传
+                        if let jobId = activeJobId {
+                            BackgroundUploadManager.shared.cancel(jobId)
+                        }
                     }
                     .buttonStyle(.bordered)
-                    .disabled(true) // 暂不支持取消
+                    .disabled(activeJobId == nil)
                 } else {
                     Button("开始上传") {
                         startUpload()
@@ -1390,32 +1393,25 @@ struct ComicZipUploadSheet: View {
         // 解析起始章节号
         let startSort = Int(startChapterSort.trimmingCharacters(in: .whitespaces))
 
-        Task {
-            let uploader = ComicZipUploader(
-                comicId: comic.id,
-                comicSlug: comic.slug,
-                fileUrl: fileUrl,
-                startChapterSort: startSort,
-                onProgress: { progress in
-                    Task { @MainActor in
-                        self.uploadProgress = progress
-                    }
-                }
-            )
-
-            do {
-                let result = try await uploader.upload()
-                await MainActor.run {
-                    uploadResult = result
-                    isUploading = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isUploading = false
-                }
+        // 交给后台管理器；sheet 关闭后上传仍会继续，可在「上传任务」查看
+        activeJobId = BackgroundUploadManager.shared.startComicUpload(
+            comicId: comic.id,
+            comicSlug: comic.slug,
+            comicTitle: comic.title,
+            fileUrl: fileUrl,
+            startChapterSort: startSort,
+            onProgress: { progress in
+                self.uploadProgress = progress
+            },
+            onCompleted: { result in
+                self.uploadResult = result
+                self.isUploading = false
+            },
+            onFailed: { error in
+                self.errorMessage = error.localizedDescription
+                self.isUploading = false
             }
-        }
+        )
     }
 }
 

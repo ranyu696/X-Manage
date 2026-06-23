@@ -1674,31 +1674,26 @@ struct EpisodeEditSheet: View {
             totalBytes: 0
         )
 
-        Task {
-            let uploader = AnimeVideoUploader(
-                animeId: episode.animeId,
-                animeSlug: animeSlug,
-                episodeNo: episode.episodeNo ?? 1,
-                fileUrl: url,
-                concurrency: 2,
-                maxRetries: 3
-            ) { progress in
-                Task { @MainActor in
-                    self.videoUploadProgress = progress
-                }
+        // 后台管理器接管 Task；sheet 关闭后上传仍会继续，可在「上传任务」查看
+        BackgroundUploadManager.shared.startAnimeUpload(
+            animeId: episode.animeId,
+            animeSlug: animeSlug,
+            episodeNo: episode.episodeNo ?? 1,
+            fileUrl: url,
+            onProgress: { progress in
+                self.videoUploadProgress = progress
+            },
+            onCompleted: { result in
+                self.videoUploadResult = result
+                self.isUploadingVideo = false
+                self.onUpdate()
+            },
+            onFailed: { error in
+                self.errorMessage = error.localizedDescription
+                self.videoUploadProgress?.status = .failed
+                self.isUploadingVideo = false
             }
-
-            do {
-                let result = try await uploader.upload()
-                videoUploadResult = result
-                onUpdate()
-            } catch {
-                errorMessage = error.localizedDescription
-                videoUploadProgress?.status = .failed
-            }
-
-            isUploadingVideo = false
-        }
+        )
     }
 
     private func getFileSize(_ url: URL) -> Int? {
@@ -2047,7 +2042,10 @@ struct EpisodeVideoUploadSheet: View {
 
                 // 2. 直接 PUT 字幕文件到预签名 URL
                 let subtitleData = try Data(contentsOf: url)
-                var putRequest = URLRequest(url: URL(string: uploadURLResponse.uploadUrl)!)
+                guard let presignedURL = URL(string: uploadURLResponse.uploadUrl) else {
+                    throw URLError(.badURL)
+                }
+                var putRequest = URLRequest(url: presignedURL)
                 putRequest.httpMethod = "PUT"
                 putRequest.setValue("text/plain", forHTTPHeaderField: "Content-Type")
                 putRequest.httpBody = subtitleData
@@ -2084,32 +2082,27 @@ struct EpisodeVideoUploadSheet: View {
             totalBytes: 0
         )
 
-        Task {
-            let uploader = AnimeVideoUploader(
-                animeId: episode.animeId,
-                animeSlug: animeSlug,
-                episodeNo: episode.episodeNo ?? 1,
-                fileUrl: url,
-                subtitlePath: subtitlePath,
-                concurrency: 2,
-                maxRetries: 3
-            ) { progress in
-                Task { @MainActor in
-                    self.uploadProgress = progress
-                }
+        // 后台管理器接管 Task；sheet 关闭后上传仍会继续，可在「上传任务」查看
+        BackgroundUploadManager.shared.startAnimeUpload(
+            animeId: episode.animeId,
+            animeSlug: animeSlug,
+            episodeNo: episode.episodeNo ?? 1,
+            fileUrl: url,
+            subtitlePath: subtitlePath,
+            onProgress: { progress in
+                self.uploadProgress = progress
+            },
+            onCompleted: { result in
+                self.uploadResult = result
+                self.isUploading = false
+                self.onUpdate()
+            },
+            onFailed: { error in
+                self.errorMessage = error.localizedDescription
+                self.uploadProgress?.status = .failed
+                self.isUploading = false
             }
-
-            do {
-                let result = try await uploader.upload()
-                uploadResult = result
-                onUpdate()
-            } catch {
-                errorMessage = error.localizedDescription
-                uploadProgress?.status = .failed
-            }
-
-            isUploading = false
-        }
+        )
     }
 
     private func getFileSize(_ url: URL) -> Int? {

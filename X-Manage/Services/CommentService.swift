@@ -182,7 +182,7 @@ class CommentService {
             URLQueryItem(name: "page_size", value: "\(pageSize)")
         ]
         return try await api.request(
-            endpoint: "\(APIEndpoints.basePrefix)/games/\(gameId)/comments",
+            endpoint: APIEndpoints.UserComments.game(gameId),
             queryItems: queryItems
         )
     }
@@ -196,7 +196,7 @@ class CommentService {
             queryItems.append(URLQueryItem(name: "status", value: status))
         }
         return try await api.request(
-            endpoint: "\(APIEndpoints.basePrefix)/users/\(userId)/comments",
+            endpoint: APIEndpoints.UserComments.user(userId),
             queryItems: queryItems
         )
     }
@@ -210,7 +210,7 @@ class CommentService {
             queryItems.append(URLQueryItem(name: "status", value: status))
         }
         return try await api.request(
-            endpoint: "\(APIEndpoints.basePrefix)/users/\(userId)/comic-comments",
+            endpoint: APIEndpoints.UserComments.userComic(userId),
             queryItems: queryItems
         )
     }
@@ -224,7 +224,7 @@ class CommentService {
             queryItems.append(URLQueryItem(name: "status", value: status))
         }
         return try await api.request(
-            endpoint: "\(APIEndpoints.basePrefix)/users/\(userId)/novel-comments",
+            endpoint: APIEndpoints.UserComments.userNovel(userId),
             queryItems: queryItems
         )
     }

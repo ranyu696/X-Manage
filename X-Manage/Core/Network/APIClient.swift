@@ -154,10 +154,17 @@ class APIClient: ObservableObject {
             }
         }
 
+        // 凭据相关端点的请求体/响应体不入日志，避免明文密码与 token 泄漏
+        let isSensitive = endpoint.contains("/auth/login") || endpoint.contains("/auth/refresh")
+
         // 日志：请求开始
         logger.info("[\(requestId)] ➡️ \(method.rawValue) \(url.absoluteString)")
         if !bodyString.isEmpty {
-            logger.debug("[\(requestId)] 📦 Body: \(bodyString)")
+            if isSensitive {
+                logger.debug("[\(requestId)] 📦 Body: <redacted>")
+            } else {
+                logger.debug("[\(requestId)] 📦 Body: \(bodyString)")
+            }
         }
 
         do {
@@ -171,14 +178,15 @@ class APIClient: ObservableObject {
 
             let statusCode = httpResponse.statusCode
             let responseString = String(data: data, encoding: .utf8) ?? "(binary data)"
+            let loggedResponse = isSensitive ? "<redacted>" : responseString
 
             // 日志：响应
             if (200...299).contains(statusCode) {
                 logger.info("[\(requestId)] ✅ \(statusCode) (\(String(format: "%.2f", duration * 1000))ms)")
-                logger.debug("[\(requestId)] 📥 Response: \(responseString)")
+                logger.debug("[\(requestId)] 📥 Response: \(loggedResponse)")
             } else {
                 logger.warning("[\(requestId)] ⚠️ \(statusCode) (\(String(format: "%.2f", duration * 1000))ms)")
-                logger.warning("[\(requestId)] 📥 Response: \(responseString)")
+                logger.warning("[\(requestId)] 📥 Response: \(loggedResponse)")
             }
 
             // 处理状态码
@@ -199,8 +207,8 @@ class APIClient: ObservableObject {
                 // 尝试刷新 Token
                 if await refreshTokenIfNeeded() {
                     logger.info("[\(requestId)] 🔐 Token refreshed, retrying request...")
-                    // 重试请求
-                    return try await self.request(endpoint: endpoint, method: method, body: body, queryItems: queryItems)
+                    // 重试请求；不再触发自动刷新，避免新 token 仍 401 时递归
+                    return try await self.request(endpoint: endpoint, method: method, body: body, queryItems: queryItems, skipAutoRefresh: true)
                 }
                 throw APIError.unauthorized
             case 403:

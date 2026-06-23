@@ -110,6 +110,7 @@ extension SSEClientDelegate {
 
 // MARK: - SSE 客户端
 
+@MainActor
 class SSEClient: NSObject {
     private let taskId: String
     private let baseURL: String
@@ -122,10 +123,7 @@ class SSEClient: NSObject {
     private(set) var state: SSEConnectionState = .disconnected {
         didSet {
             if oldValue != state {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    self.delegate?.sseClient(self, didChangeState: self.state)
-                }
+                delegate?.sseClient(self, didChangeState: state)
             }
         }
     }
@@ -135,6 +133,8 @@ class SSEClient: NSObject {
     private var reconnectAttempts = 0
     private let maxReconnectAttempts = 3
     private let reconnectDelay: TimeInterval = 1.0
+    // 总连接超时上限，避免 .infinity 让任务无限挂起
+    private let resourceTimeout: TimeInterval = 60 * 60
 
     init(taskId: String, baseURL: String, endpoint: String) {
         self.taskId = taskId
@@ -143,20 +143,19 @@ class SSEClient: NSObject {
         super.init()
     }
 
+    deinit {
+        // URLSession 强引用 delegate（self），必须显式失效；invalidateAndCancel 线程安全
+        urlSession?.invalidateAndCancel()
+    }
+
     // MARK: - 连接管理
 
-    @MainActor
     func connect() {
         disconnect()
         state = .connecting
 
-        var urlString = baseURL + endpoint
-        if let token = AuthManager.shared.accessToken {
-            urlString += "?token=\(token)"
-        }
-
-        guard let url = URL(string: urlString) else {
-            logger.error("Invalid SSE URL: \(urlString)")
+        guard let url = URL(string: baseURL + endpoint) else {
+            logger.error("Invalid SSE URL")
             state = .error
             return
         }
@@ -164,17 +163,21 @@ class SSEClient: NSObject {
         var request = URLRequest(url: url)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
-        request.timeoutInterval = TimeInterval.infinity
+        // token 通过 Authorization 头传递，避免出现在 URL 与日志中
+        if let token = AuthManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.timeoutInterval = resourceTimeout
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = TimeInterval.infinity
-        config.timeoutIntervalForResource = TimeInterval.infinity
+        config.timeoutIntervalForResource = resourceTimeout
 
         urlSession = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         dataTask = urlSession?.dataTask(with: request)
         dataTask?.resume()
 
-        logger.info("SSE connecting to: \(urlString)")
+        logger.info("SSE connecting (task: \(self.taskId))")
     }
 
     func disconnect() {
@@ -194,10 +197,7 @@ class SSEClient: NSObject {
         guard reconnectAttempts < maxReconnectAttempts else {
             logger.error("SSE max reconnect attempts reached")
             let errorData = SSEErrorData(message: "连接失败，已达到最大重试次数", error: "MAX_RECONNECT_ATTEMPTS")
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.delegate?.sseClient(self, didReceiveError: errorData)
-            }
+            delegate?.sseClient(self, didReceiveError: errorData)
             return
         }
 
@@ -205,13 +205,19 @@ class SSEClient: NSObject {
         let delay = reconnectDelay * pow(2.0, Double(reconnectAttempts - 1))
         logger.info("SSE reconnecting in \(delay)s (attempt \(self.reconnectAttempts))")
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self = self, self.state == .error || self.state == .disconnected else { return }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard let self, self.state == .error || self.state == .disconnected else { return }
             self.connect()
         }
     }
 
     // MARK: - 数据解析
+
+    fileprivate func appendData(_ data: Data) {
+        buffer.append(data)
+        processBuffer()
+    }
 
     private func processBuffer() {
         guard let string = String(data: buffer, encoding: .utf8) else { return }
@@ -248,9 +254,22 @@ class SSEClient: NSObject {
 
         logger.debug("SSE event: \(type), data: \(data)")
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            self.handleEvent(type: type, data: data)
+        handleEvent(type: type, data: data)
+    }
+
+    fileprivate func handleTransportError(_ error: Error) {
+        if (error as NSError).code == NSURLErrorCancelled { return }
+        logger.error("SSE connection error: \(error.localizedDescription)")
+        state = .error
+        attemptReconnect()
+    }
+
+    fileprivate func handleResponse(statusCode: Int) {
+        if statusCode == 200 {
+            logger.info("SSE connection established")
+        } else {
+            logger.error("SSE connection failed with status: \(statusCode)")
+            state = .error
         }
     }
 
@@ -300,30 +319,24 @@ class SSEClient: NSObject {
 // MARK: - URLSessionDataDelegate
 
 extension SSEClient: URLSessionDataDelegate {
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        buffer.append(data)
-        processBuffer()
-    }
-
-    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if let error = error {
-            // 忽略取消错误
-            if (error as NSError).code == NSURLErrorCancelled {
-                return
-            }
-            logger.error("SSE connection error: \(error.localizedDescription)")
-            state = .error
-            attemptReconnect()
+    nonisolated func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        Task { @MainActor [weak self] in
+            self?.appendData(data)
         }
     }
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        if let httpResponse = response as? HTTPURLResponse {
-            if httpResponse.statusCode == 200 {
-                logger.info("SSE connection established")
-            } else {
-                logger.error("SSE connection failed with status: \(httpResponse.statusCode)")
-                state = .error
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        guard let error else { return }
+        Task { @MainActor [weak self] in
+            self?.handleTransportError(error)
+        }
+    }
+
+    nonisolated func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping @Sendable (URLSession.ResponseDisposition) -> Void) {
+        let statusCode = (response as? HTTPURLResponse)?.statusCode
+        Task { @MainActor [weak self] in
+            if let statusCode {
+                self?.handleResponse(statusCode: statusCode)
             }
         }
         completionHandler(.allow)

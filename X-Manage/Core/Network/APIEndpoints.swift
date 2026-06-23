@@ -80,7 +80,18 @@ enum APIEndpoints {
         static let episodeFanartUpload = "\(basePrefix)/anime/episodes/fanart/upload-url"
         static let videoUploadInit = "\(basePrefix)/anime/upload/init"
         static func videoUploadComplete(_ uploadId: String) -> String { "\(basePrefix)/anime/upload/\(uploadId)/complete" }
+        static func videoUploadAbort(_ uploadId: String) -> String { "\(basePrefix)/anime/upload/abort/\(uploadId)" }
         static let subtitleUploadURL = "\(basePrefix)/anime/episodes/subtitle/upload-url"
+    }
+
+    // MARK: - 漫画上传分块
+    enum ComicUpload {
+        static let initSession = "\(basePrefix)/comics/upload/init"
+        static func chunk(_ sessionId: String, _ chunkNumber: Int) -> String {
+            "\(basePrefix)/comics/upload/chunk/\(sessionId)/\(chunkNumber)"
+        }
+        static func complete(_ sessionId: String) -> String { "\(basePrefix)/comics/upload/complete/\(sessionId)" }
+        static func abort(_ sessionId: String) -> String { "\(basePrefix)/comics/upload/abort/\(sessionId)" }
     }
 
     // MARK: - 漫画上传任务
@@ -156,6 +167,24 @@ enum APIEndpoints {
     // MARK: - 系统配置
     enum Configs {
         static let list = "\(basePrefix)/configs"
+        static let site = "\(basePrefix)/config/site"
+        static let announcement = "\(basePrefix)/config/announcement"
+        static let cdn = "\(basePrefix)/config/cdn"
+        static let email = "\(basePrefix)/config/email"
+        static let payment = "\(basePrefix)/config/payment"
+        static let telegram = "\(basePrefix)/config/telegram"
+        static let membership = "\(basePrefix)/config/membership"
+        static let oauth = "\(basePrefix)/config/oauth"
+        static let promotion = "\(basePrefix)/config/promotion"
+        static let ad = "\(basePrefix)/config/ad"
+    }
+
+    // MARK: - 用户评论（聚合）
+    enum UserComments {
+        static func game(_ gameId: Int) -> String { "\(basePrefix)/games/\(gameId)/comments" }
+        static func user(_ userId: Int) -> String { "\(basePrefix)/users/\(userId)/comments" }
+        static func userComic(_ userId: Int) -> String { "\(basePrefix)/users/\(userId)/comic-comments" }
+        static func userNovel(_ userId: Int) -> String { "\(basePrefix)/users/\(userId)/novel-comments" }
     }
 
     // MARK: - 应用版本

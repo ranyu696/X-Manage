@@ -5,7 +5,10 @@
 //  邮件服务 - 使用 SwiftMail 库
 
 import Foundation
+import os.log
 import SwiftMail
+
+private let logger = Logger(subsystem: "com.xyouacg.X-Manage", category: "Email")
 
 // MARK: - 邮件服务
 @MainActor
@@ -58,28 +61,47 @@ class EmailService: ObservableObject {
 
         // 连接并登录
         try await smtpServer.connect()
-        defer {
-            Task {
-                try? await smtpServer.disconnect()
-            }
+
+        do {
+            try await smtpServer.login(username: config.username, password: config.password)
+
+            // 构建邮件
+            let sender = SwiftMail.EmailAddress(name: config.senderName, address: config.username)
+            let recipients = request.to.map { SwiftMail.EmailAddress(name: $0.name, address: $0.address) }
+
+            let email = SwiftMail.Email(
+                sender: sender,
+                recipients: recipients,
+                subject: request.subject,
+                textBody: request.body,
+                htmlBody: request.htmlBody
+            )
+
+            // 发送邮件
+            try await smtpServer.sendEmail(email)
+        } catch {
+            await safeDisconnect(smtpServer)
+            throw error
         }
 
-        try await smtpServer.login(username: config.username, password: config.password)
+        await safeDisconnect(smtpServer)
+    }
 
-        // 构建邮件
-        let sender = SwiftMail.EmailAddress(name: config.senderName, address: config.username)
-        let recipients = request.to.map { SwiftMail.EmailAddress(name: $0.name, address: $0.address) }
+    // MARK: - 连接清理
+    private func safeDisconnect(_ server: SMTPServer) async {
+        do {
+            try await server.disconnect()
+        } catch {
+            logger.error("SMTP disconnect failed: \(error.localizedDescription)")
+        }
+    }
 
-        let email = SwiftMail.Email(
-            sender: sender,
-            recipients: recipients,
-            subject: request.subject,
-            textBody: request.body,
-            htmlBody: request.htmlBody
-        )
-
-        // 发送邮件
-        try await smtpServer.sendEmail(email)
+    private func safeDisconnect(_ server: IMAPServer) async {
+        do {
+            try await server.disconnect()
+        } catch {
+            logger.error("IMAP disconnect failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - 刷新邮件列表（重置并获取最新）
@@ -109,12 +131,12 @@ class EmailService: ObservableObject {
 
             let mailboxStatus = try await imapServer.selectMailbox(folder.rawValue)
             totalEmailCount = mailboxStatus.messageCount
-            print("邮箱状态: 共 \(totalEmailCount) 封邮件")
+            logger.info("Mailbox status: \(self.totalEmailCount) emails")
 
             guard totalEmailCount > 0 else {
                 emails = []
                 hasMoreEmails = false
-                try? await imapServer.disconnect()
+                await safeDisconnect(imapServer)
                 return
             }
 
@@ -124,11 +146,11 @@ class EmailService: ObservableObject {
 
             guard endIndex >= 1 && startIndex <= endIndex else {
                 hasMoreEmails = false
-                try? await imapServer.disconnect()
+                await safeDisconnect(imapServer)
                 return
             }
 
-            print("正在获取邮件 \(startIndex) 到 \(endIndex)...")
+            logger.info("Fetching emails \(startIndex)...\(endIndex)")
 
             let startSeq = SequenceNumber(startIndex)
             let endSeq = SequenceNumber(endIndex)
@@ -162,12 +184,12 @@ class EmailService: ObservableObject {
             currentOffset = totalEmailCount - startIndex + 1
             hasMoreEmails = startIndex > 1
 
-            try? await imapServer.disconnect()
-            print("成功获取 \(emails.count) 封邮件，还有更多: \(hasMoreEmails)")
+            await safeDisconnect(imapServer)
+            logger.info("Fetched \(self.emails.count) emails, hasMore=\(self.hasMoreEmails)")
 
         } catch {
-            try? await imapServer.disconnect()
-            print("获取邮件失败: \(error)")
+            await safeDisconnect(imapServer)
+            logger.error("Fetch emails failed: \(error.localizedDescription)")
             throw error
         }
     }
@@ -194,11 +216,11 @@ class EmailService: ObservableObject {
 
             guard endIndex >= 1 && startIndex <= endIndex else {
                 hasMoreEmails = false
-                try? await imapServer.disconnect()
+                await safeDisconnect(imapServer)
                 return
             }
 
-            print("加载更多: 邮件 \(startIndex) 到 \(endIndex)...")
+            logger.info("Loading more emails \(startIndex)...\(endIndex)")
 
             let startSeq = SequenceNumber(startIndex)
             let endSeq = SequenceNumber(endIndex)
@@ -233,11 +255,11 @@ class EmailService: ObservableObject {
             currentOffset = totalEmailCount - startIndex + 1
             hasMoreEmails = startIndex > 1
 
-            try? await imapServer.disconnect()
-            print("已加载更多 \(fetchedEmails.count) 封，总共 \(emails.count) 封")
+            await safeDisconnect(imapServer)
+            logger.info("Loaded \(fetchedEmails.count) more, total=\(self.emails.count)")
 
         } catch {
-            try? await imapServer.disconnect()
+            await safeDisconnect(imapServer)
             throw error
         }
     }
@@ -314,7 +336,7 @@ class EmailService: ObservableObject {
                 break
             }
 
-            try? await imapServer.disconnect()
+            await safeDisconnect(imapServer)
 
             // 更新缓存中的邮件
             if let index = emails.firstIndex(where: { $0.id == email.id }) {
@@ -324,7 +346,7 @@ class EmailService: ObservableObject {
             return updatedEmail
 
         } catch {
-            try? await imapServer.disconnect()
+            await safeDisconnect(imapServer)
             throw error
         }
     }
@@ -348,8 +370,13 @@ class EmailService: ObservableObject {
     func testConnection() async throws {
         let imapServer = IMAPServer(host: config.imapServer, port: config.imapPort)
         try await imapServer.connect()
-        try await imapServer.login(username: config.username, password: config.password)
-        try await imapServer.disconnect()
+        do {
+            try await imapServer.login(username: config.username, password: config.password)
+        } catch {
+            await safeDisconnect(imapServer)
+            throw error
+        }
+        await safeDisconnect(imapServer)
     }
 
     // MARK: - AI 生成邮件回复

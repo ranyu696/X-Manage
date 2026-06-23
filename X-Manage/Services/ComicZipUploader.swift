@@ -5,6 +5,9 @@
 //  漫画ZIP分块上传器
 
 import Foundation
+import os.log
+
+private let uploaderLogger = Logger(subsystem: "com.xyouacg.X-Manage", category: "ComicZipUploader")
 
 // MARK: - 上传请求/响应模型
 
@@ -217,7 +220,12 @@ actor ComicZipUploader {
     func abort() async {
         aborted = true
         if let sessionId = sessionId {
-            try? await abortUpload(sessionId: sessionId)
+            do {
+                try await abortUpload(sessionId: sessionId)
+            } catch {
+                // 客户端取消后服务端清理失败，记录 sessionId 便于人工清理
+                uploaderLogger.error("Failed to abort comic upload session (sessionId=\(sessionId)): \(error.localizedDescription)")
+            }
         }
         updateProgress(ComicZipUploadProgress(
             status: .aborted,
@@ -240,7 +248,7 @@ actor ComicZipUploader {
         )
 
         return try await APIClient.shared.request(
-            endpoint: "\(APIEndpoints.basePrefix)/comics/upload/init",
+            endpoint: APIEndpoints.ComicUpload.initSession,
             method: .post,
             body: request
         )
@@ -249,15 +257,15 @@ actor ComicZipUploader {
     private func uploadChunk(sessionId: String, chunk: ChunkInfo) async throws {
         let chunkData = try readChunk(chunk)
 
-        // 获取需要的值（从 @MainActor 上下文）
-        let baseURL = await APIClient.shared.baseURL
-        let token = await AuthManager.shared.accessToken
-
         var lastError: Error?
 
         for retry in 0...maxRetries {
+            // 每次重试前重新读取 baseURL 与 token，避免中途刷新后仍用陈旧 token 导致 401
+            let baseURL = await APIClient.shared.baseURL
+            let token = await AuthManager.shared.accessToken
+
             do {
-                guard let url = URL(string: baseURL + "\(APIEndpoints.basePrefix)/comics/upload/chunk/\(sessionId)/\(chunk.chunkNumber)") else {
+                guard let url = URL(string: baseURL + APIEndpoints.ComicUpload.chunk(sessionId, chunk.chunkNumber)) else {
                     throw ComicZipUploadError.invalidUrl
                 }
 
@@ -309,7 +317,7 @@ actor ComicZipUploader {
         )
 
         return try await APIClient.shared.request(
-            endpoint: "\(APIEndpoints.basePrefix)/comics/upload/complete/\(sessionId)",
+            endpoint: APIEndpoints.ComicUpload.complete(sessionId),
             method: .post,
             body: request
         )
@@ -317,7 +325,7 @@ actor ComicZipUploader {
 
     private func abortUpload(sessionId: String) async throws {
         try await APIClient.shared.requestVoid(
-            endpoint: "\(APIEndpoints.basePrefix)/comics/upload/abort/\(sessionId)",
+            endpoint: APIEndpoints.ComicUpload.abort(sessionId),
             method: .delete
         )
     }

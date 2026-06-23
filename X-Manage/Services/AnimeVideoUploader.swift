@@ -5,6 +5,9 @@
 //  动漫视频分块上传器（S3 Multipart Upload）
 
 import Foundation
+import os.log
+
+private let uploaderLogger = Logger(subsystem: "com.xyouacg.X-Manage", category: "AnimeVideoUploader")
 
 // MARK: - 上传请求/响应模型
 
@@ -252,7 +255,12 @@ actor AnimeVideoUploader {
     func abort() async {
         aborted = true
         if let uploadId = uploadId {
-            try? await abortUpload(uploadId: uploadId)
+            do {
+                try await abortUpload(uploadId: uploadId)
+            } catch {
+                // 客户端取消后服务端清理失败，记录上传 ID 便于人工清理孤儿分片
+                uploaderLogger.error("Failed to abort S3 multipart upload (uploadId=\(uploadId)): \(error.localizedDescription)")
+            }
         }
         updateProgress(VideoUploadProgress(
             status: .aborted,
@@ -345,7 +353,7 @@ actor AnimeVideoUploader {
 
     private func abortUpload(uploadId: String) async throws {
         try await APIClient.shared.requestVoid(
-            endpoint: "\(APIEndpoints.basePrefix)/anime/upload/abort/\(uploadId)",
+            endpoint: APIEndpoints.Anime.videoUploadAbort(uploadId),
             method: .delete
         )
     }

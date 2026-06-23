@@ -10,6 +10,7 @@ import SwiftUI
 enum NavigationItem: String, Hashable, Identifiable {
     // 概览
     case dashboard = "仪表板"
+    case backgroundUploads = "上传任务"
 
     // 漫画管理
     case comicList = "漫画列表"
@@ -59,6 +60,7 @@ enum NavigationItem: String, Hashable, Identifiable {
     var icon: String {
         switch self {
         case .dashboard: return "chart.pie.fill"
+        case .backgroundUploads: return "arrow.up.circle"
         case .comicList: return "book.closed"
         case .comicPricing: return "dollarsign.circle"
         case .comicOrders: return "list.clipboard"
@@ -142,6 +144,7 @@ enum SystemGroup: String, CaseIterable, Identifiable {
 // MARK: - 主视图
 struct MainView: View {
     @StateObject private var authManager = AuthManager.shared
+    @ObservedObject private var uploadManager = BackgroundUploadManager.shared
     @State private var selectedItem: NavigationItem = .dashboard
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var expandedGroups: Set<ContentGroup> = []
@@ -155,6 +158,20 @@ struct MainView: View {
                 Section("概览") {
                     NavigationLink(value: NavigationItem.dashboard) {
                         Label("仪表板", systemImage: "chart.pie.fill")
+                    }
+                    NavigationLink(value: NavigationItem.backgroundUploads) {
+                        HStack {
+                            Label("上传任务", systemImage: "arrow.up.circle")
+                            Spacer()
+                            if uploadManager.activeCount > 0 {
+                                Text("\(uploadManager.activeCount)")
+                                    .font(.caption2.monospacedDigit())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 1)
+                                    .background(Color.blue, in: Capsule())
+                                    .foregroundStyle(.white)
+                            }
+                        }
                     }
                 }
 
@@ -279,6 +296,8 @@ struct MainView: View {
         switch item {
         case .dashboard:
             DashboardView()
+        case .backgroundUploads:
+            BackgroundUploadTasksView()
 
         // 漫画
         case .comicList:
