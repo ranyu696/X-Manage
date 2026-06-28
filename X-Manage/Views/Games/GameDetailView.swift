@@ -1203,6 +1203,8 @@ struct GameVersionEditSheet: View {
         Task {
             do {
                 let cheatCodes = parseCheatCodes()
+                // 存储路径手填易带首尾空白/换行，trim 避免后端按 key 匹配失败导致下载 404
+                let trimmedPath = storagePath.trimmingCharacters(in: .whitespacesAndNewlines)
 
                 if let existingVersion = version, let original = originalData {
                     // 更新 - 只发送修改过的字段
@@ -1249,8 +1251,8 @@ struct GameVersionEditSheet: View {
                         request.cloudPassword = cloudPassword.isEmpty ? nil : cloudPassword
                         hasChanges = true
                     }
-                    if storagePath != original.storagePath {
-                        request.storagePath = storagePath.isEmpty ? nil : storagePath
+                    if trimmedPath != original.storagePath {
+                        request.storagePath = trimmedPath.isEmpty ? nil : trimmedPath
                         hasChanges = true
                     }
                     if unzipCodes != original.unzipCodes {
@@ -1288,7 +1290,7 @@ struct GameVersionEditSheet: View {
                         baiduPassword: baiduPassword,
                         cloudUrl: cloudUrl.isEmpty ? nil : cloudUrl,
                         cloudPassword: cloudPassword.isEmpty ? nil : cloudPassword,
-                        storagePath: storagePath.isEmpty ? nil : storagePath,
+                        storagePath: trimmedPath.isEmpty ? nil : trimmedPath,
                         unzipCodes: unzipCodes,
                         cheatCodes: cheatCodes
                     )
