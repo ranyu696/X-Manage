@@ -753,8 +753,16 @@ class ComicDetailViewModel: ObservableObject {
 
     func loadChapters() async {
         do {
-            let response = try await service.getChapters(comicId: comicId, page: 1, pageSize: 100)
-            chapters = response.chapters
+            // 全量章节：后端单页上限 100，按 totalPages 翻页取完（上限保护 50 页）
+            var all: [Chapter] = []
+            var page = 1
+            while page <= 50 {
+                let response = try await service.getChapters(comicId: comicId, page: page, pageSize: 100)
+                all.append(contentsOf: response.chapters)
+                if response.chapters.isEmpty || page >= response.pagination.totalPages { break }
+                page += 1
+            }
+            chapters = all
         } catch {
             // 章节加载失败不影响主页面
         }

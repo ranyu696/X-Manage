@@ -957,14 +957,10 @@ class NovelDetailViewModel: ObservableObject {
     @Published var novel: Novel?
     @Published var chapters: [NovelChapter] = []
     @Published var isLoading = false
-    @Published var isLoadingMoreChapters = false
     @Published var errorMessage: String?
-    @Published var hasMoreChapters = true
 
     let novelId: Int
     private let service = NovelService.shared
-    private var currentPage = 1
-    private let pageSize = 50
 
     init(novelId: Int) {
         self.novelId = novelId
@@ -984,30 +980,20 @@ class NovelDetailViewModel: ObservableObject {
     }
 
     func loadChapters() async {
-        currentPage = 1
         do {
-            let response = try await service.getChapters(novelId: novelId, page: currentPage, pageSize: pageSize)
-            chapters = response.chapters
-            hasMoreChapters = response.chapters.count >= pageSize
+            // 全量章节：后端单页上限 100，按 totalPage 翻页取完（上限保护 50 页）；边取边显示
+            var all: [NovelChapter] = []
+            var page = 1
+            while page <= 50 {
+                let response = try await service.getChapters(novelId: novelId, page: page, pageSize: 100)
+                all.append(contentsOf: response.chapters)
+                chapters = all
+                if response.chapters.isEmpty || page >= response.pagination.totalPage { break }
+                page += 1
+            }
         } catch {
             // 章节加载失败不影响主页面
         }
-    }
-
-    func loadMoreChapters() async {
-        guard hasMoreChapters, !isLoadingMoreChapters else { return }
-        isLoadingMoreChapters = true
-
-        do {
-            currentPage += 1
-            let response = try await service.getChapters(novelId: novelId, page: currentPage, pageSize: pageSize)
-            chapters.append(contentsOf: response.chapters)
-            hasMoreChapters = response.chapters.count >= pageSize
-        } catch {
-            currentPage -= 1
-        }
-
-        isLoadingMoreChapters = false
     }
 
     func deleteChapter(_ chapter: NovelChapter) async {
@@ -1366,28 +1352,6 @@ struct NovelDetailPanel: View {
                                             .padding(.leading)
                                     }
                                 }
-                                .onAppear {
-                                    // 无限滚动：当显示倒数第 5 个时加载更多
-                                    if chapter.id == viewModel.chapters.dropLast(5).last?.id {
-                                        Task {
-                                            await viewModel.loadMoreChapters()
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 加载更多指示器
-                            if viewModel.isLoadingMoreChapters {
-                                ProgressView()
-                                    .padding()
-                            } else if viewModel.hasMoreChapters {
-                                Button("加载更多") {
-                                    Task {
-                                        await viewModel.loadMoreChapters()
-                                    }
-                                }
-                                .font(.caption)
-                                .padding()
                             }
                         }
                     }
