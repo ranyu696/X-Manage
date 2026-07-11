@@ -29,7 +29,7 @@ enum AppPlatform: String, Codable, CaseIterable {
     var iconName: String {
         switch self {
         case .ios: return "iphone"
-        case .android: return "android"
+        case .android: return "smartphone"
         case .windows: return "desktopcomputer"
         case .macos: return "laptopcomputer"
         case .linux: return "terminal"
