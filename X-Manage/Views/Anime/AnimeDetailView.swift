@@ -2150,6 +2150,7 @@ struct AnimeDetailPanel: View {
 
     @State private var showCreateEpisodeSheet = false
     @State private var showEditSheet = false
+    @State private var showScreenshotPicker = false
     @State private var selectedEpisodeForDetail: Episode?
     @State private var selectedEpisodeForEdit: Episode?
     @State private var selectedEpisodeForUpload: Episode?
@@ -2215,16 +2216,29 @@ struct AnimeDetailPanel: View {
                     VStack(spacing: 20) {
                         // 封面和基本信息
                         HStack(alignment: .top, spacing: 16) {
-                            AsyncImage(url: URL(string: anime.cover)) { image in
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            } placeholder: {
-                                Rectangle()
-                                    .fill(.quaternary)
+                            VStack(spacing: 6) {
+                                AsyncImage(url: URL(string: anime.cover)) { image in
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } placeholder: {
+                                    Rectangle()
+                                        .fill(.quaternary)
+                                }
+                                .frame(width: 100, height: 140)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                                Button {
+                                    showScreenshotPicker = true
+                                } label: {
+                                    Label("从截图选取", systemImage: "photo.on.rectangle.angled")
+                                        .font(.caption)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(viewModel.episodes.isEmpty)
+                                .help("从剧集视频截图中选取封面/横图")
                             }
-                            .frame(width: 100, height: 140)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
 
                             VStack(alignment: .leading, spacing: 8) {
                                 panelInfoRow("制作", anime.studio ?? "-")
@@ -2285,6 +2299,14 @@ struct AnimeDetailPanel: View {
         .task {
             await viewModel.loadAnime()
             await viewModel.loadEpisodes()
+        }
+        .sheet(isPresented: $showScreenshotPicker) {
+            AnimeCoverScreenshotPicker(episodes: viewModel.episodes) {
+                Task {
+                    await viewModel.loadAnime()
+                    onUpdate()
+                }
+            }
         }
     }
 
@@ -2492,6 +2514,154 @@ struct AnimeDetailPanel: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(8)
         }
+    }
+}
+
+// MARK: - 从剧集截图选取封面/横图
+// 动漫封面/横图存储在第 1 集上，所以无论截图来自哪一集，最终都写入第 1 集
+struct AnimeCoverScreenshotPicker: View {
+    @Environment(\.dismiss) private var dismiss
+    let episodes: [Episode]
+    let onUpdate: () -> Void
+
+    @State private var selectedEpisodeId: Int?
+    @State private var screenshots: [String] = []
+    @State private var isLoading = false
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+
+    init(episodes: [Episode], onUpdate: @escaping () -> Void) {
+        self.episodes = episodes
+        self.onUpdate = onUpdate
+        let ep1 = episodes.first { $0.episodeNo == 1 } ?? episodes.first
+        _selectedEpisodeId = State(initialValue: ep1?.id)
+    }
+
+    private var episode1: Episode? {
+        episodes.first { $0.episodeNo == 1 } ?? episodes.first
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 标题栏
+            HStack {
+                Text("从截图选取封面")
+                    .font(.headline)
+
+                Spacer()
+
+                if episodes.count > 1 {
+                    Picker("截图来源", selection: $selectedEpisodeId) {
+                        ForEach(episodes) { ep in
+                            Text("第 \(ep.episodeNo ?? 0) 集").tag(ep.id as Int?)
+                        }
+                    }
+                    .frame(width: 160)
+                }
+
+                Button("关闭") { dismiss() }
+                    .keyboardShortcut(.escape)
+            }
+            .padding()
+
+            Divider()
+
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if screenshots.isEmpty {
+                ContentUnavailableView(
+                    "暂无截图",
+                    systemImage: "photo.on.rectangle",
+                    description: Text("该剧集还没有视频截图，请先上传视频并等待转码完成")
+                )
+            } else {
+                ScrollView {
+                    let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(screenshots, id: \.self) { url in
+                            VStack(spacing: 6) {
+                                AsyncImage(url: URL(string: url)) { image in
+                                    image
+                                        .resizable()
+                                        .aspectRatio(16/9, contentMode: .fill)
+                                } placeholder: {
+                                    Rectangle()
+                                        .fill(.quaternary)
+                                        .aspectRatio(16/9, contentMode: .fill)
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                                HStack(spacing: 8) {
+                                    Button("设为封面") {
+                                        Task { await setImage(url, isCover: true) }
+                                    }
+                                    Button("设为横图") {
+                                        Task { await setImage(url, isCover: false) }
+                                    }
+                                }
+                                .controlSize(.small)
+                                .disabled(isSaving)
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+
+            if let error = errorMessage {
+                Divider()
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .padding(8)
+            }
+        }
+        .frame(width: 720, height: 520)
+        .task(id: selectedEpisodeId) {
+            await loadScreenshots()
+        }
+    }
+
+    private func loadScreenshots() async {
+        guard let id = selectedEpisodeId else { return }
+        isLoading = true
+        errorMessage = nil
+        do {
+            let detail = try await AnimeService.shared.getEpisodeDetail(episodeId: id)
+            screenshots = detail.screenshots ?? []
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    private func setImage(_ url: String, isCover: Bool) async {
+        guard let ep1 = episode1 else {
+            errorMessage = "该动漫没有剧集"
+            return
+        }
+        // 提取存储路径（去掉 CDN 域名前缀）
+        guard let u = URL(string: url), !u.path.isEmpty else {
+            errorMessage = "无法解析截图地址"
+            return
+        }
+        let key = String(u.path.dropFirst())
+
+        isSaving = true
+        errorMessage = nil
+        do {
+            if isCover {
+                try await AnimeService.shared.updateEpisodeCover(episodeId: ep1.id, cover: key)
+            } else {
+                try await AnimeService.shared.updateEpisodeFanart(episodeId: ep1.id, fanart: key)
+            }
+            onUpdate()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isSaving = false
     }
 }
 
