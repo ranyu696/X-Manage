@@ -182,4 +182,26 @@ class ConfigService {
         )
         return response.config
     }
+
+    // MARK: - AI 助手 FAQ 知识库
+    // FAQ 是一整篇 Markdown，没有字段可拆，所以不套 UpdateConfigRequest
+    func getAssistantFAQ() async throws -> String {
+        let response: AssistantFAQResponse = try await api.request(
+            endpoint: APIEndpoints.Configs.assistantFAQ
+        )
+        return response.faq
+    }
+
+    func updateAssistantFAQ(_ faq: String) async throws {
+        let _: AssistantFAQResponse = try await api.request(
+            endpoint: APIEndpoints.Configs.assistantFAQ,
+            method: .put,
+            body: AssistantFAQResponse(faq: faq)
+        )
+    }
+}
+
+// MARK: - AI 助手 FAQ
+struct AssistantFAQResponse: Codable {
+    let faq: String
 }

@@ -90,7 +90,7 @@ class GeminiService {
     }
 
     /// 通用内容生成
-    func generateContent(systemPrompt: String? = nil, userPrompt: String) async throws -> String {
+    func generateContent(systemPrompt: String? = nil, userPrompt: String, maxOutputTokens: Int = 1024) async throws -> String {
         guard let url = URL(string: "\(baseURL)?key=\(apiKey)") else {
             throw GeminiServiceError.invalidURL
         }
@@ -113,7 +113,7 @@ class GeminiService {
             systemInstruction: systemInstruction,
             generationConfig: GenerationConfig(
                 temperature: 1.0,
-                maxOutputTokens: 1024
+                maxOutputTokens: maxOutputTokens
             )
         )
 

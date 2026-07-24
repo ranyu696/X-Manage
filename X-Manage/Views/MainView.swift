@@ -43,6 +43,7 @@ enum NavigationItem: String, Hashable, Identifiable {
     // 运营管理
     case comments = "评论管理"
     case tickets = "工单管理"
+    case faqKnowledge = "FAQ 知识库"
     case emails = "邮件管理"
     case payments = "支付订单"
     case paymentAppeals = "支付申诉"
@@ -81,6 +82,7 @@ enum NavigationItem: String, Hashable, Identifiable {
         case .tags: return "tag.fill"
         case .comments: return "bubble.left.and.bubble.right.fill"
         case .tickets: return "ticket.fill"
+        case .faqKnowledge: return "sparkles.rectangle.stack"
         case .emails: return "envelope.fill"
         case .payments: return "creditcard.fill"
         case .paymentAppeals: return "exclamationmark.bubble.fill"
@@ -225,6 +227,9 @@ struct MainView: View {
                     NavigationLink(value: NavigationItem.tickets) {
                         Label("工单管理", systemImage: "ticket.fill")
                     }
+                    NavigationLink(value: NavigationItem.faqKnowledge) {
+                        Label("FAQ 知识库", systemImage: "sparkles.rectangle.stack")
+                    }
                     NavigationLink(value: NavigationItem.emails) {
                         Label("邮件管理", systemImage: "envelope.fill")
                     }
@@ -348,6 +353,8 @@ struct MainView: View {
             CommentListView()
         case .tickets:
             TicketListView()
+        case .faqKnowledge:
+            FAQGeneratorView()
         case .emails:
             EmailListView()
         case .payments:

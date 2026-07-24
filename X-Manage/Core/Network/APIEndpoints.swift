@@ -176,6 +176,7 @@ enum APIEndpoints {
         static let membership = "\(basePrefix)/config/membership"
         static let oauth = "\(basePrefix)/config/oauth"
         static let promotion = "\(basePrefix)/config/promotion"
+        static let assistantFAQ = "\(basePrefix)/config/assistant-faq"
         static let ad = "\(basePrefix)/config/ad"
     }
 
