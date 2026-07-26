@@ -68,7 +68,10 @@ final class FAQGeneratorViewModel: ObservableObject {
             }
 
             progress = "汇总 \(summaries.count) 条摘要，生成 FAQ…"
-            faq = try await cluster(summaries)
+            // 「## 附录」起的内容是运营手写的固定知识（如 App 使用教程），
+            // 不来自工单归纳——重新生成时原样保留，别让一次生成把它冲掉
+            let appendix = faq.range(of: "\n## 附录").map { String(faq[$0.lowerBound...]) } ?? ""
+            faq = try await cluster(summaries) + appendix
             progress = "完成：\(tickets.count) 条工单 → \(faq.count) 字 FAQ"
         } catch {
             errorMessage = error.localizedDescription
