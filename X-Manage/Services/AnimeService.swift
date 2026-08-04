@@ -110,8 +110,9 @@ class AnimeService {
     }
 
     func unpublish(id: Int) async throws {
+        // 注意：动漫的下架路由是 /unlist（漫画/小说才是 /unpublish），网关命名不统一
         try await api.requestVoid(
-            endpoint: "\(APIEndpoints.Anime.detail(id))/unpublish",
+            endpoint: "\(APIEndpoints.Anime.detail(id))/unlist",
             method: .post
         )
     }
