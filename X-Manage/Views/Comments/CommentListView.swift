@@ -209,6 +209,7 @@ struct ComicCommentListView: View {
             .tint(.orange)
 
             Button("批量删除") {
+                guard confirmCommentDelete(count: selectedComments.count) else { return }
                 viewModel.batchDelete(ids: Array(selectedComments))
                 selectedComments.removeAll()
             }
@@ -429,6 +430,7 @@ struct GameCommentListView: View {
             .tint(.orange)
 
             Button("批量删除") {
+                guard confirmCommentDelete(count: selectedComments.count) else { return }
                 viewModel.batchDelete(ids: Array(selectedComments))
                 selectedComments.removeAll()
             }
@@ -684,6 +686,18 @@ struct GameCommentRow: View {
     }
 }
 
+// 删除前二次确认：删除是软删除，前台立即不可见，误点代价大
+@MainActor
+func confirmCommentDelete(count: Int = 1) -> Bool {
+    let alert = NSAlert()
+    alert.messageText = count > 1 ? "确定删除选中的 \(count) 条评论？" : "确定删除这条评论？"
+    alert.informativeText = "删除后前台将不再显示。只是不想展示请用「拒绝」。"
+    alert.alertStyle = .warning
+    alert.addButton(withTitle: "删除").hasDestructiveAction = true
+    alert.addButton(withTitle: "取消")
+    return alert.runModal() == .alertFirstButtonReturn
+}
+
 // MARK: - 游戏评论操作按钮
 @ViewBuilder
 private func gameCommentActionButtons(
@@ -697,7 +711,7 @@ private func gameCommentActionButtons(
     onReply: @escaping () -> Void
 ) -> some View {
     HStack(spacing: 8) {
-        if status == "PENDING" {
+        if status == "COMMENT_PENDING" {
             Button {
                 onApprove()
             } label: {
@@ -745,7 +759,7 @@ private func gameCommentActionButtons(
         .help("回复")
 
         Button {
-            onDelete()
+            if confirmCommentDelete() { onDelete() }
         } label: {
             Image(systemName: "trash")
         }
@@ -1017,6 +1031,7 @@ struct AnimeCommentListView: View {
             .tint(.orange)
 
             Button("批量删除") {
+                guard confirmCommentDelete(count: selectedComments.count) else { return }
                 viewModel.batchDelete(ids: Array(selectedComments))
                 selectedComments.removeAll()
             }
@@ -1330,7 +1345,7 @@ private func commentActionButtons(
         }
 
         Button {
-            onDelete()
+            if confirmCommentDelete() { onDelete() }
         } label: {
             Image(systemName: "trash")
         }
