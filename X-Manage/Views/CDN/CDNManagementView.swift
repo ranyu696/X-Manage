@@ -244,7 +244,6 @@ struct CDNNodeDetailView: View {
         case "cache":    CDNNodeCacheTab(node: node)
         case "domains":  CDNNodeDomainsTab(node: node)
         case "config":   CDNNodeConfigTab(node: node, onPushDone: onRefresh)
-        case "downloads": CDNNodeDownloadsTab(node: node)
         default:         EmptyView()
         }
     }
@@ -254,7 +253,6 @@ struct CDNNodeDetailView: View {
             ("cache", "缓存", "internaldrive"),
             ("domains", "域名", "network"),
             ("config", "配置", "slider.horizontal.3"),
-            ("downloads", "下载", "arrow.down.circle"),
         ]
     }
 
@@ -709,132 +707,6 @@ struct CDNNodeConfigTab: View {
             message = (error.localizedDescription, true)
         }
         isLoading = false
-    }
-}
-
-// MARK: - 下载监控 Tab
-
-struct CDNNodeDownloadsTab: View {
-    let node: CDNNode
-    @State private var snapshot: CDNDownloadSnapshot?
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // 汇总栏
-            HStack(spacing: 24) {
-                VStack(spacing: 2) {
-                    Text("\(snapshot?.totalActive ?? 0)")
-                        .font(.title2).fontWeight(.bold)
-                    Text("活跃下载")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                VStack(spacing: 2) {
-                    Text(formatBandwidth(snapshot?.totalBandwidthBps ?? 0))
-                        .font(.title2).fontWeight(.bold)
-                    Text("总带宽")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button {
-                    Task { await load() }
-                } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(.bordered)
-                .disabled(isLoading)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.secondary.opacity(0.05))
-
-            Divider()
-
-            if isLoading && snapshot == nil {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let downloads = snapshot?.activeDownloads, !downloads.isEmpty {
-                Table(downloads) {
-                    TableColumn("文件") { d in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(d.fileKey)
-                                .font(.system(.caption, design: .monospaced))
-                                .lineLimit(1)
-                            Text(d.userId)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    TableColumn("进度") { d in
-                        VStack(alignment: .leading, spacing: 2) {
-                            ProgressView(value: d.progress, total: 1)
-                                .frame(maxWidth: 100)
-                            Text("\(Int(d.progress * 100))%")
-                                .font(.caption2)
-                        }
-                    }
-                    .width(120)
-
-                    TableColumn("速度") { d in
-                        Text(formatBandwidth(d.speedBps))
-                            .font(.caption)
-                    }
-                    .width(80)
-
-                    TableColumn("IP") { d in
-                        Text(d.clientIp)
-                            .font(.system(.caption, design: .monospaced))
-                    }
-                    .width(120)
-
-                    TableColumn("缓存") { d in
-                        Image(systemName: d.cacheHit ? "checkmark.circle.fill" : "xmark.circle")
-                            .foregroundStyle(d.cacheHit ? .green : .secondary)
-                    }
-                    .width(50)
-                }
-            } else {
-                ContentUnavailableView(
-                    "暂无活跃下载",
-                    systemImage: "arrow.down.circle",
-                    description: Text(errorMessage ?? "当前没有正在进行的下载")
-                )
-            }
-
-            if let err = errorMessage {
-                HStack {
-                    Label(err, systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
-                        .font(.caption)
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.red.opacity(0.05))
-            }
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        isLoading = true
-        errorMessage = nil
-        do {
-            snapshot = try await CDNService.shared.getNodeDownloads(node.id)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isLoading = false
-    }
-
-    private func formatBandwidth(_ bps: Double) -> String {
-        if bps >= 1_000_000 {
-            return String(format: "%.1f MB/s", bps / 1_000_000)
-        } else if bps >= 1_000 {
-            return String(format: "%.1f KB/s", bps / 1_000)
-        }
-        return String(format: "%.0f B/s", bps)
     }
 }
 
