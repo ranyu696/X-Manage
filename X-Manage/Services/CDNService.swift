@@ -92,10 +92,6 @@ class CDNService: ObservableObject {
         try await client.request(endpoint: APIEndpoints.CDN.nodeClear(id), method: .post)
     }
 
-    func getNodeDownloads(_ id: Int) async throws -> CDNDownloadSnapshot {
-        try await client.request(endpoint: APIEndpoints.CDN.nodeDownloads(id))
-    }
-
     func checkNodeHealth(_ id: Int) async throws {
         try await client.requestVoid(endpoint: APIEndpoints.CDN.nodeHealth(id))
     }
@@ -151,12 +147,6 @@ class CDNService: ObservableObject {
     }
 
     // MARK: - 聚合
-
-    func getAllDownloads() async throws -> [CDNNodeDownloadSnapshot] {
-        struct Resp: Decodable { let nodes: [CDNNodeDownloadSnapshot] }
-        let resp: Resp = try await client.request(endpoint: APIEndpoints.CDN.downloads)
-        return resp.nodes
-    }
 
     func getAllStats() async throws -> [CDNCacheStats] {
         // 响应: {nodes: [{node_id, node_name, region, enabled, cache_size_mb, ...}]}

@@ -172,67 +172,6 @@ struct CDNRunningConfig: Codable {
     }
 }
 
-// MARK: - 下载监控
-
-struct CDNDownloadInfo: Codable, Identifiable {
-    let id: String
-    let userId: String
-    let fileKey: String
-    let totalSize: Int64
-    let bytesSent: Int64
-    let clientIp: String
-    let speedBps: Double
-    let progress: Double
-    let cacheHit: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case id, progress
-        case userId = "user_id"
-        case fileKey = "file_key"
-        case totalSize = "total_size"
-        case bytesSent = "bytes_sent"
-        case clientIp = "client_ip"
-        case speedBps = "speed_bps"
-        case cacheHit = "cache_hit"
-    }
-}
-
-// 单节点下载快照（GET /cdn/nodes/{id}/downloads）
-struct CDNDownloadSnapshot: Codable {
-    let timestamp: Int64
-    let activeDownloads: [CDNDownloadInfo]
-    let totalActive: Int
-    let totalBandwidthBps: Double
-
-    enum CodingKeys: String, CodingKey {
-        case timestamp
-        case activeDownloads = "active_downloads"
-        case totalActive = "total_active"
-        case totalBandwidthBps = "total_bandwidth_bps"
-    }
-}
-
-// 聚合下载快照（GET /cdn/downloads，每节点一个）
-struct CDNNodeDownloadSnapshot: Codable {
-    let nodeId: Int
-    let nodeName: String
-    let region: String
-    let timestamp: Int64
-    let activeDownloads: [CDNDownloadInfo]
-    let totalActive: Int
-    let totalBandwidthBps: Double
-    let error: String?
-
-    enum CodingKeys: String, CodingKey {
-        case nodeId = "node_id"
-        case nodeName = "node_name"
-        case region, timestamp, error
-        case activeDownloads = "active_downloads"
-        case totalActive = "total_active"
-        case totalBandwidthBps = "total_bandwidth_bps"
-    }
-}
-
 // MARK: - 创建/更新节点请求
 
 struct CDNNodeCreateRequest: Encodable {
