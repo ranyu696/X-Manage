@@ -265,7 +265,8 @@ class UploadService {
         var request = URLRequest(url: uploadUrl)
         request.httpMethod = "PUT"
         request.httpBody = data
-        // 不设置 Content-Type 以避免某些存储服务的 CORS 问题
+        // Content-Type 已纳入预签名，必须与申请上传地址时一致
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
 
         let (_, response) = try await URLSession.shared.data(for: request)
 
