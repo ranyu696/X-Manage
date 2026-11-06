@@ -321,6 +321,9 @@ struct AdConfig: Codable {
     // 横幅广告
     var bannerUrl: String?
     var bannerLink: String?
+    // 网页端、桌面端横幅（约 1920x300）。bannerUrl 是移动端 16:9 图，两者共用 bannerLink。
+    // 为 nil 时不编码进请求体，后端保留原值
+    var bannerWideUrl: String?
     // 弹窗广告
     var popupEnabled: Bool?
     var popupImageUrl: String?
@@ -336,6 +339,7 @@ struct AdConfig: Codable {
         case enabled
         case bannerUrl = "banner_url"
         case bannerLink = "banner_link"
+        case bannerWideUrl = "banner_wide_url"
         case popupEnabled = "popup_enabled"
         case popupImageUrl = "popup_image_url"
         case popupLink = "popup_link"

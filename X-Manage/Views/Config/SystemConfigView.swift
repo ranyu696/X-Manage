@@ -601,7 +601,15 @@ struct AdConfigView: View {
 
                 GroupBox("横幅广告") {
                     VStack(spacing: 12) {
-                        ConfigTextField(label: "图片URL", text: $viewModel.config.bannerUrl.bound)
+                        ConfigTextField(label: "App 图片URL（16:9）", text: $viewModel.config.bannerUrl.bound)
+                        // 不用 .bound：清空时要提交空字符串才能清掉后端的值，nil 会被当作「未修改」
+                        ConfigTextField(
+                            label: "网页/桌面图片URL（1920×300）",
+                            text: Binding(
+                                get: { viewModel.config.bannerWideUrl ?? "" },
+                                set: { viewModel.config.bannerWideUrl = $0 }
+                            )
+                        )
                         ConfigTextField(label: "跳转链接", text: $viewModel.config.bannerLink.bound)
                     }
                     .padding()
